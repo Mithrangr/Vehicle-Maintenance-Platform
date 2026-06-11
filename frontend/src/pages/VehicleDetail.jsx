@@ -33,6 +33,8 @@ const VehicleDetail = () => {
   const [vehicle, setVehicle] = useState(null);
   const [prediction, setPrediction] = useState(null);
   const [services, setServices] = useState([]);
+  const [appointments, setAppointments] = useState([]);
+  const [activeTab, setActiveTab] = useState('diagnostics');
   const [loading, setLoading] = useState(true);
 
   // Modals State
@@ -73,7 +75,11 @@ const VehicleDetail = () => {
   const fetchVehicleDetails = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/vehicles/${id}`);
+      const [res, apptRes] = await Promise.all([
+        api.get(`/vehicles/${id}`),
+        api.get('/appointments')
+      ]);
+
       if (res.data.success) {
         setVehicle(res.data.vehicle);
         setPrediction(res.data.prediction);
@@ -88,6 +94,13 @@ const VehicleDetail = () => {
         setEditVehicleType(res.data.vehicle.vehicleType);
         setNewOdo(res.data.vehicle.currentOdometer);
         setServiceOdo(res.data.vehicle.currentOdometer);
+      }
+
+      if (apptRes.data.success) {
+        const filtered = apptRes.data.appointments.filter(
+          (a) => (a.vehicle._id || a.vehicle) === id
+        );
+        setAppointments(filtered);
       }
     } catch (err) {
       console.error(err.message);
@@ -220,7 +233,7 @@ const VehicleDetail = () => {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Navbar onToggleSidebar={() => setSidebarOpen(true)} title="Vehicle Health Inspector" />
+        <Navbar onToggleSidebar={() => setSidebarOpen(true)} title={`My Vehicles > ${vehicle ? `${vehicle.manufacturer} ${vehicle.model}` : 'Vehicle'}`} />
 
         <main className="flex-1 overflow-y-auto p-6">
           {loading ? (
@@ -238,7 +251,7 @@ const VehicleDetail = () => {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <Link
                   to="/vehicles"
-                  className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+                  className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-650 transition-colors dark:hover:text-slate-200"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Back to Fleet
@@ -247,15 +260,15 @@ const VehicleDetail = () => {
                 <div className="flex items-center gap-2.5">
                   <button
                     onClick={() => setIsOdoModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-darkBg-900 hover:bg-darkBg-850 border border-darkBg-850 hover:border-brand-500/20 text-slate-200 text-xs font-semibold rounded-xl transition-all shadow-sm"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 transition-all shadow-sm dark:bg-darkBg-900 dark:border-darkBg-850 dark:text-slate-200 dark:hover:bg-darkBg-850"
                   >
-                    <Activity className="h-4 w-4 text-brand-400" />
+                    <Activity className="h-4 w-4 text-blue-500 dark:text-brand-400" />
                     Update Odometer
                   </button>
                   
                   <button
                     onClick={() => setIsServiceModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl transition-all shadow-md"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl transition-all shadow-md dark:bg-brand-600 dark:hover:bg-brand-500"
                   >
                     <Plus className="h-4 w-4" />
                     Log Repair Record
@@ -263,7 +276,7 @@ const VehicleDetail = () => {
 
                   <button
                     onClick={() => setIsEditModalOpen(true)}
-                    className="p-2 bg-darkBg-900 border border-darkBg-850 hover:border-brand-500/20 text-slate-400 hover:text-slate-200 rounded-xl transition-colors"
+                    className="p-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-xl transition-colors dark:bg-darkBg-900 dark:border-darkBg-850 dark:text-slate-450 dark:hover:text-slate-200"
                     title="Edit vehicle details"
                   >
                     <Edit className="h-4 w-4" />
@@ -271,7 +284,7 @@ const VehicleDetail = () => {
 
                   <button
                     onClick={() => setIsDeleteModalOpen(true)}
-                    className="p-2 bg-darkBg-900 border border-darkBg-850 hover:border-rose-500/20 text-rose-400 hover:text-rose-300 rounded-xl transition-colors"
+                    className="p-2 bg-white border border-slate-200 text-rose-500 hover:bg-rose-50/55 rounded-xl transition-colors dark:bg-darkBg-900 dark:border-darkBg-850 dark:text-rose-400 dark:hover:text-rose-300"
                     title="Delete vehicle"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -281,193 +294,304 @@ const VehicleDetail = () => {
 
               {/* Main Panels */}
               <div className="grid gap-6 lg:grid-cols-3">
-                {/* Left side: Vehicle Specs & Health score */}
+                {/* Left side: Vehicle Specs & Activity Log */}
                 <div className="flex flex-col gap-6 lg:col-span-1">
-                  {/* Summary Card */}
+                  
+                  {/* Stockomo Details Card */}
                   <div className="glass-card">
-                    <div className="flex items-start gap-4 mb-4">
-                      <div className="rounded-2xl bg-brand-500/10 p-3.5 text-brand-400 border border-brand-500/25">
-                        <Car className="h-7 w-7" />
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-4">DETAILS</span>
+                    <div className="space-y-3.5 text-sm">
+                      <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-darkBg-850 mb-3">
+                        <span className="text-slate-400 font-bold text-xs uppercase tracking-wider">Health Rating</span>
+                        {prediction ? (
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getHealthBg(prediction.healthScore)}`}>
+                            {prediction.healthScore}%
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400 dark:text-slate-550">Calculating...</span>
+                        )}
                       </div>
-                      <div>
-                        <span className="font-mono text-[10px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-darkBg-800 rounded-md text-slate-400 border border-slate-200/50 dark:border-darkBg-750 uppercase">
-                          {vehicle.registrationNumber}
+                      
+                      <div className="grid grid-cols-3 gap-2">
+                        <span className="text-slate-400 dark:text-slate-500 col-span-1">Category</span>
+                        <span className="text-slate-300 dark:text-slate-700 col-span-0.5 text-center">:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200 col-span-1.5">{vehicle.vehicleType}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <span className="text-slate-400 dark:text-slate-500 col-span-1">Priority</span>
+                        <span className="text-slate-300 dark:text-slate-700 col-span-0.5 text-center">:</span>
+                        <span className="col-span-1.5">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
+                            !prediction || prediction.healthScore >= 80
+                              ? 'bg-emerald-50 border-emerald-200/50 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400'
+                              : prediction.healthScore >= 50
+                              ? 'bg-amber-50 border-amber-200/50 text-amber-600 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400'
+                              : 'bg-rose-50 border-rose-200/50 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-450'
+                          }`}>
+                            {!prediction || prediction.healthScore >= 80 ? 'Low' : prediction.healthScore >= 50 ? 'Medium' : 'High'}
+                          </span>
                         </span>
-                        <h3 className="text-xl font-extrabold text-slate-200 mt-1">
-                          {vehicle.manufacturer} {vehicle.model}
-                        </h3>
-                        <p className="text-xs text-slate-400 mt-0.5">{vehicle.variant || 'Standard Variant'}</p>
                       </div>
-                    </div>
-
-                    {/* Specs list */}
-                    <div className="space-y-3 mt-6 pt-6 border-t border-darkBg-850 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Year Model</span>
-                        <span className="font-semibold text-slate-300">{vehicle.year}</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        <span className="text-slate-400 dark:text-slate-500 col-span-1">Odometer</span>
+                        <span className="text-slate-300 dark:text-slate-700 col-span-0.5 text-center">:</span>
+                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-200 col-span-1.5">{formatOdometer(vehicle.currentOdometer)}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Fuel Type</span>
-                        <span className="font-semibold text-slate-300">{vehicle.fuelType}</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        <span className="text-slate-400 dark:text-slate-500 col-span-1">Fuel Type</span>
+                        <span className="text-slate-300 dark:text-slate-700 col-span-0.5 text-center">:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200 col-span-1.5">{vehicle.fuelType}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Classification</span>
-                        <span className="font-semibold text-slate-300">{vehicle.vehicleType}</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        <span className="text-slate-400 dark:text-slate-500 col-span-1">Year</span>
+                        <span className="text-slate-300 dark:text-slate-700 col-span-0.5 text-center">:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200 col-span-1.5">{vehicle.year}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Purchase Date</span>
-                        <span className="font-semibold text-slate-300">{formatDate(vehicle.purchaseDate)}</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        <span className="text-slate-400 dark:text-slate-500 col-span-1">Registered</span>
+                        <span className="text-slate-300 dark:text-slate-700 col-span-0.5 text-center">:</span>
+                        <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-200 col-span-1.5">{vehicle.registrationNumber}</span>
                       </div>
-                      <div className="flex justify-between items-center py-1.5 border-t border-darkBg-850 mt-4">
-                        <span className="text-slate-400 font-bold text-xs uppercase tracking-wider">Current Odometer</span>
-                        <span className="font-extrabold text-base text-brand-400">{formatOdometer(vehicle.currentOdometer)}</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        <span className="text-slate-400 dark:text-slate-500 col-span-1">Purchased</span>
+                        <span className="text-slate-300 dark:text-slate-700 col-span-0.5 text-center">:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200 col-span-1.5">{formatDate(vehicle.purchaseDate)}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Health gauge card */}
+                  {/* Stockomo Activity Log Card */}
                   <div className="glass-card">
-                    <h3 className="font-bold text-slate-100 mb-4 flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-brand-400" />
-                      Overall Health Score
-                    </h3>
-                    {prediction ? (
-                      <HealthWidget score={prediction.healthScore} />
-                    ) : (
-                      <div className="flex h-36 items-center justify-center">
-                        <span className="text-slate-500 text-xs">Awaiting predictions...</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right side: Component lists & timelines */}
-                <div className="flex flex-col gap-6 lg:col-span-2">
-                  {/* Predictions List */}
-                  <div className="glass-card">
-                    <h3 className="font-bold text-slate-100 mb-4 flex items-center gap-2">
-                      <Settings2 className="h-5 w-5 text-brand-400" />
-                      Predictive Maintenance Diagnostics
-                    </h3>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      {prediction?.predictions?.map((pred) => (
-                        <div
-                          key={pred._id}
-                          className="p-4 rounded-xl border border-darkBg-850 bg-darkBg-900 flex flex-col justify-between"
-                        >
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <h4 className="font-bold text-sm text-slate-200">{pred.category}</h4>
-                              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border uppercase ${
-                                pred.status === 'Overdue'
-                                  ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                                  : pred.status === 'Due Soon'
-                                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                                  : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                              }`}>
-                                {pred.status}
-                              </span>
-                            </div>
-
-                            <div className="space-y-1 mt-2 text-xs text-slate-400 font-medium">
-                              <div className="flex justify-between">
-                                <span>Remaining Distance:</span>
-                                <span className={pred.remainingDistance <= 0 ? 'text-rose-400 font-bold' : 'text-slate-300'}>
-                                  {pred.remainingDistance <= 0 ? 'Overdue' : `${pred.remainingDistance.toLocaleString()} km`}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Remaining Days:</span>
-                                <span className={pred.remainingDays <= 0 ? 'text-rose-400 font-bold' : 'text-slate-300'}>
-                                  {pred.remainingDays <= 0 ? 'Overdue' : `${pred.remainingDays} days`}
-                                </span>
-                              </div>
-                            </div>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-4">ACTIVITY LOG</span>
+                    <div className="space-y-4">
+                      {services.slice(0, 3).map((srv, idx) => (
+                        <div key={idx} className="flex gap-3 items-start">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600 font-bold text-xs dark:bg-darkBg-850 dark:text-brand-400 uppercase">
+                            {srv.serviceCenter?.slice(0, 2) || 'SC'}
                           </div>
-
-                          <div className="mt-4 pt-3 border-t border-darkBg-850 flex items-center justify-between">
-                            <span className="text-[10px] text-slate-500 font-semibold uppercase">
-                              Priority index: {pred.priorityScore}%
-                            </span>
-                            <button
-                              onClick={() => openLogServiceForCategory(pred.category)}
-                              className="text-[10px] font-bold text-brand-400 hover:text-brand-300 flex items-center gap-1"
-                            >
-                              <Wrench className="h-3 w-3" /> Log Service
-                            </button>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-slate-700 dark:text-slate-250 leading-tight">
+                              {srv.serviceCategory} logged
+                            </p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                              At {srv.serviceCenter} • {formatDate(srv.serviceDate)}
+                            </p>
                           </div>
                         </div>
                       ))}
+                      {services.length === 0 && (
+                        <div className="text-center py-6 text-slate-450 dark:text-slate-500 text-xs">
+                          No repair activities logged.
+                        </div>
+                      )}
                     </div>
                   </div>
+                </div>
 
-                  {/* History timelines */}
-                  <div className="glass-card">
-                    <h3 className="font-bold text-slate-100 mb-6 flex items-center gap-2">
-                      <History className="h-5 w-5 text-brand-400" />
-                      Maintenance Log History
-                    </h3>
+                {/* Right side: Tabbed diagnostic list & schedules */}
+                <div className="flex flex-col gap-6 lg:col-span-2">
+                  
+                  {/* Stockomo-inspired tabbed body card */}
+                  <div className="glass-card flex-1 flex flex-col p-0 overflow-hidden">
+                    {/* Tabs bar */}
+                    <div className="flex border-b border-slate-100 dark:border-darkBg-850 px-6 pt-4">
+                      <button
+                        onClick={() => setActiveTab('diagnostics')}
+                        className={`pb-4 px-2 text-sm font-semibold border-b-2 transition-all ${
+                          activeTab === 'diagnostics'
+                            ? 'border-blue-600 text-blue-600 dark:border-brand-500 dark:text-brand-400'
+                            : 'border-transparent text-slate-400 hover:text-slate-650 dark:hover:text-slate-300'
+                        }`}
+                      >
+                        Diagnostics
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('logs')}
+                        className={`pb-4 px-2 ml-6 text-sm font-semibold border-b-2 transition-all ${
+                          activeTab === 'logs'
+                            ? 'border-blue-600 text-blue-600 dark:border-brand-500 dark:text-brand-400'
+                            : 'border-transparent text-slate-400 hover:text-slate-650 dark:hover:text-slate-300'
+                        }`}
+                      >
+                        Service History
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('appointments')}
+                        className={`pb-4 px-2 ml-6 text-sm font-semibold border-b-2 transition-all ${
+                          activeTab === 'appointments'
+                            ? 'border-blue-600 text-blue-600 dark:border-brand-500 dark:text-brand-400'
+                            : 'border-transparent text-slate-400 hover:text-slate-650 dark:hover:text-slate-300'
+                        }`}
+                      >
+                        Appointments
+                      </button>
+                    </div>
 
-                    {services.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-darkBg-800 rounded-xl bg-darkBg-900/10">
-                        <FileText className="h-8 w-8 text-slate-600 mb-2" />
-                        <p className="text-xs text-slate-500">No repair logs recorded for this vehicle</p>
-                        <button
-                          onClick={() => setIsServiceModalOpen(true)}
-                          className="mt-3 text-xs font-semibold text-brand-400 hover:underline"
-                        >
-                          Log First Service
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="relative border-l-2 border-darkBg-800 ml-3.5 space-y-6">
-                        {services.map((srv) => (
-                          <div key={srv._id} className="relative pl-7 group">
-                            {/* Bullet Circle */}
-                            <div className="absolute -left-2.5 top-1 h-5 w-5 rounded-full bg-darkBg-900 border-2 border-brand-500 flex items-center justify-center">
-                              <Wrench className="h-2.5 w-2.5 text-brand-400" />
-                            </div>
-
-                            <div className="p-4 rounded-xl border border-darkBg-850 bg-darkBg-900/40 hover:bg-darkBg-900/70 transition-all">
-                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
-                                <div className="flex items-center gap-2.5">
-                                  <h4 className="font-bold text-slate-200 text-sm">{srv.serviceCategory}</h4>
-                                  <span className="text-[10px] font-semibold text-slate-500">• {formatOdometer(srv.odometerReading)}</span>
-                                </div>
-                                <span className="text-[11px] font-semibold text-slate-400">
-                                  {formatDate(srv.serviceDate)}
-                                </span>
-                              </div>
-
-                              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                                {srv.serviceDescription}
-                              </p>
-
-                              {srv.partsReplaced?.length > 0 && (
-                                <div className="mt-3 flex flex-wrap gap-1.5 items-center">
-                                  <span className="text-[10px] text-slate-500 font-semibold mr-1">Parts:</span>
-                                  {srv.partsReplaced.map((part, pidx) => (
-                                    <span key={pidx} className="text-[9px] font-medium px-2 py-0.5 bg-darkBg-850 rounded border border-darkBg-800 text-slate-300">
-                                      {part}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-
-                              <div className="mt-4 pt-3 border-t border-darkBg-850 flex items-center justify-between text-xs text-slate-500 font-medium">
-                                <span className="flex items-center gap-1.5">
-                                  <Store className="h-3.5 w-3.5" /> {srv.serviceCenter}
-                                </span>
-                                <span className="flex items-center gap-1 font-bold text-slate-300">
-                                  <Coins className="h-3.5 w-3.5 text-brand-400" /> {formatCost(srv.cost)}
-                                </span>
-                              </div>
-                            </div>
+                    {/* Tab contents */}
+                    <div className="p-6 overflow-y-auto">
+                      {activeTab === 'diagnostics' && (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Component Diagnostics Checklist</span>
+                            {prediction && (
+                              <span className="text-xs text-slate-400 dark:text-slate-500">
+                                Overall Health: <strong>{prediction.healthScore}%</strong>
+                              </span>
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    )}
+                          
+                          <div className="divide-y divide-slate-100 dark:divide-darkBg-850">
+                            {prediction?.predictions?.map((pred) => (
+                              <div
+                                key={pred._id}
+                                className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group first:pt-0 last:pb-0"
+                              >
+                                <div className="space-y-0.5">
+                                  <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{pred.category}</h4>
+                                  <p className="text-[11px] text-slate-450 dark:text-slate-400">
+                                    Remaining: <span className={pred.remainingDistance <= 0 ? 'text-rose-500 font-bold' : 'font-medium'}>{pred.remainingDistance <= 0 ? 'Overdue' : `${pred.remainingDistance.toLocaleString()} km`}</span>
+                                    {' • '}
+                                    <span className={pred.remainingDays <= 0 ? 'text-rose-500 font-bold' : 'font-medium'}>{pred.remainingDays <= 0 ? 'Time Exceeded' : `${pred.remainingDays} days`}</span>
+                                  </p>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  <span className={`text-[9px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase ${
+                                    pred.status === 'Overdue'
+                                      ? 'bg-rose-50 border-rose-200/50 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400'
+                                      : pred.status === 'Due Soon'
+                                      ? 'bg-amber-50 border-amber-200/50 text-amber-600 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400'
+                                      : 'bg-emerald-50 border-emerald-200/50 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-450'
+                                  }`}>
+                                    {pred.status}
+                                  </span>
+                                  
+                                  <button
+                                    onClick={() => openLogServiceForCategory(pred.category)}
+                                    className="px-3 py-1 bg-white border border-slate-200 text-slate-600 text-[10px] font-bold rounded-lg hover:bg-blue-600 hover:text-white hover:border-transparent transition-all dark:bg-darkBg-850 dark:border-darkBg-800 dark:text-slate-400 dark:hover:bg-brand-500"
+                                  >
+                                    Log Service
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {activeTab === 'logs' && (
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Historical Logs</span>
+                          </div>
+
+                          {services.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 dark:border-darkBg-800 dark:bg-darkBg-900/10">
+                              <FileText className="h-8 w-8 text-slate-400 mb-2 animate-pulse" />
+                              <p className="text-xs text-slate-500">No repair logs recorded</p>
+                              <button
+                                onClick={() => setIsServiceModalOpen(true)}
+                                className="mt-2 text-xs font-semibold text-blue-600 hover:underline"
+                              >
+                                Log First Service
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="relative border-l border-slate-100 ml-2 space-y-6 dark:border-darkBg-850">
+                              {services.map((srv) => (
+                                <div key={srv._id} className="relative pl-6 group">
+                                  {/* Bullet point circle */}
+                                  <div className="absolute -left-[4.5px] top-1.5 h-2 w-2 rounded-full bg-blue-500 dark:bg-brand-500" />
+
+                                  <div className="p-4 rounded-xl bg-slate-50/50 border border-slate-100 hover:bg-slate-50/70 hover:border-slate-200 transition-all dark:bg-darkBg-900/40 dark:border-darkBg-850 dark:hover:bg-darkBg-900/70">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+                                      <div className="flex items-center gap-2">
+                                        <h4 className="font-semibold text-slate-800 text-sm dark:text-slate-200">{srv.serviceCategory}</h4>
+                                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">• {formatOdometer(srv.odometerReading)}</span>
+                                      </div>
+                                      <span className="text-[10px] font-semibold text-slate-400">
+                                        {formatDate(srv.serviceDate)}
+                                      </span>
+                                    </div>
+
+                                    <p className="text-xs text-slate-500 dark:text-slate-450 mt-2 leading-relaxed">
+                                      {srv.serviceDescription}
+                                    </p>
+
+                                    {srv.partsReplaced?.length > 0 && (
+                                      <div className="mt-3 flex flex-wrap gap-1 items-center">
+                                        <span className="text-[10px] text-slate-400 font-semibold mr-1">Parts:</span>
+                                        {srv.partsReplaced.map((part, pidx) => (
+                                          <span key={pidx} className="text-[9px] font-medium px-2 py-0.5 bg-white border border-slate-150 rounded text-slate-655 dark:bg-darkBg-850 dark:border-darkBg-800 dark:text-slate-350">
+                                            {part}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-450 dark:border-darkBg-850 font-medium">
+                                      <span className="flex items-center gap-1">
+                                        <Store className="h-3.5 w-3.5" /> {srv.serviceCenter}
+                                      </span>
+                                      <span className="flex items-center gap-1 font-bold text-slate-700 dark:text-slate-300">
+                                        <Coins className="h-3.5 w-3.5 text-blue-550 dark:text-brand-400" /> {formatCost(srv.cost)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {activeTab === 'appointments' && (
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Scheduled Service Appointments</span>
+                          </div>
+
+                          {appointments.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 dark:border-darkBg-800 dark:bg-darkBg-900/10">
+                              <Calendar className="h-8 w-8 text-slate-400 mb-2" />
+                              <p className="text-xs text-slate-500">No appointments booked for this vehicle</p>
+                              <Link
+                                to="/appointments"
+                                className="mt-2 text-xs font-semibold text-blue-650 hover:underline dark:text-brand-400"
+                              >
+                                Book Service Slot
+                              </Link>
+                            </div>
+                          ) : (
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              {appointments.map((appt) => (
+                                <div
+                                  key={appt._id}
+                                  className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 flex flex-col justify-between dark:border-darkBg-850 dark:bg-darkBg-900"
+                                >
+                                  <div>
+                                    <div className="flex items-center justify-between mb-2.5">
+                                      <span className={`text-[9px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                                        appt.status === 'Confirmed'
+                                          ? 'bg-emerald-50 border-emerald-200/50 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400'
+                                          : 'bg-amber-50 border-amber-200/50 text-amber-600 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400'
+                                      }`}>
+                                        {appt.status}
+                                      </span>
+                                      <span className="text-[10px] text-slate-400 font-semibold">
+                                        {formatDate(appt.appointmentDate)}
+                                      </span>
+                                    </div>
+                                    <h4 className="font-semibold text-slate-700 dark:text-slate-200 text-sm">{appt.serviceCategory}</h4>
+                                    <p className="text-xs text-slate-450 dark:text-slate-400 mt-1 leading-normal">{appt.notes || 'No comments provided'}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

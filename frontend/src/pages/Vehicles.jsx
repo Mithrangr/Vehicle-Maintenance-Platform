@@ -120,12 +120,12 @@ const Vehicles = () => {
             {/* Header section with add button */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold text-slate-100">Manage Fleet</h2>
-                <p className="text-xs text-slate-400">Track and inspect registered vehicles</p>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Manage Fleet</h2>
+                <p className="text-xs text-slate-550 dark:text-slate-400">Track and inspect registered vehicles</p>
               </div>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl shadow-lg shadow-brand-500/10 transition-all self-start sm:self-auto"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/10 transition-all self-start sm:self-auto dark:bg-brand-600 dark:hover:bg-brand-500 dark:shadow-brand-500/20"
               >
                 <Plus className="h-4 w-4" />
                 Register Vehicle
@@ -133,24 +133,24 @@ const Vehicles = () => {
             </div>
 
             {/* Filters Bar */}
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between p-4 bg-white dark:bg-darkBg-900 border border-slate-200 dark:border-darkBg-850 rounded-2xl shadow-sm">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between p-4 bg-white dark:bg-darkBg-900 border border-slate-200/50 dark:border-darkBg-850 rounded-2xl shadow-sm">
               <div className="relative w-full md:max-w-sm">
-                <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
+                <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search manufacturer, model or plate..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 dark:border-darkBg-800 dark:bg-darkBg-950 rounded-xl text-sm placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 dark:border-darkBg-800 dark:bg-darkBg-950 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white dark:text-slate-100 dark:focus:border-brand-500 transition-colors"
                 />
               </div>
 
               <div className="flex items-center gap-3 w-full md:w-auto">
-                <Filter className="h-4 w-4 text-slate-500 shrink-0" />
+                <Filter className="h-4 w-4 text-slate-400 shrink-0" />
                 <select
                   value={fuelFilter}
                   onChange={(e) => setFuelFilter(e.target.value)}
-                  className="w-full md:w-40 px-3 py-2 bg-slate-50 border border-slate-200 dark:border-darkBg-800 dark:bg-darkBg-950 rounded-xl text-sm text-slate-300 focus:outline-none focus:border-brand-500 transition-colors"
+                  className="w-full md:w-40 px-3 py-2 bg-slate-50 border border-slate-200 dark:border-darkBg-800 dark:bg-darkBg-950 rounded-xl text-sm text-slate-700 focus:outline-none focus:border-blue-600 focus:bg-white dark:text-slate-300 dark:focus:border-brand-500 transition-colors"
                 >
                   <option value="">All Fuel Types</option>
                   <option value="Petrol">Petrol</option>
@@ -168,9 +168,9 @@ const Vehicles = () => {
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-500 border-t-transparent"></div>
               </div>
             ) : filteredVehicles.length === 0 ? (
-              <div className="text-center py-20 border border-dashed border-darkBg-800 rounded-2xl bg-darkBg-900/10">
-                <Car className="h-10 w-10 text-slate-600 mx-auto mb-3" />
-                <p className="text-sm font-semibold text-slate-300">No vehicles found</p>
+              <div className="text-center py-20 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50 dark:border-darkBg-800 dark:bg-darkBg-900/10">
+                <Car className="h-10 w-10 text-slate-400 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No vehicles found</p>
                 <p className="text-xs text-slate-500 mt-1">Try refining your search keywords or filter settings.</p>
               </div>
             ) : (
@@ -178,7 +178,7 @@ const Vehicles = () => {
                 {filteredVehicles.map((v) => (
                   <div
                     key={v._id}
-                    className="glass-card hover:border-brand-500/20 flex flex-col justify-between group h-full relative"
+                    className="glass-card hover:border-blue-500/20 dark:hover:border-brand-500/20 flex flex-col justify-between group h-full relative"
                   >
                     <div>
                       {/* Top plate and type */}
@@ -197,24 +197,24 @@ const Vehicles = () => {
                       </div>
 
                       {/* Manufacturer and Model */}
-                      <h3 className="text-lg font-bold text-slate-200 group-hover:text-brand-400 transition-colors">
+                      <h3 className="text-lg font-bold text-slate-800 group-hover:text-blue-600 transition-colors dark:text-slate-200 dark:group-hover:text-brand-400">
                         {v.manufacturer} {v.model}
                       </h3>
-                      <p className="text-xs text-slate-400 mt-0.5">{v.variant || 'Standard Variant'}</p>
+                      <p className="text-xs text-slate-450 dark:text-slate-400 mt-0.5">{v.variant || 'Standard Variant'}</p>
 
                       {/* Specs */}
-                      <div className="grid grid-cols-2 gap-3 mt-6 pt-4 border-t border-darkBg-850 text-xs text-slate-400 font-medium">
+                      <div className="grid grid-cols-2 gap-3 mt-6 pt-4 border-t border-slate-100 dark:border-darkBg-850 text-xs text-slate-500 dark:text-slate-400 font-medium">
                         <div className="flex items-center gap-2">
-                          <Fuel className="h-4 w-4 text-slate-500" />
+                          <Fuel className="h-4 w-4 text-slate-400" />
                           <span>{v.fuelType}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-slate-500" />
+                          <Calendar className="h-4 w-4 text-slate-400" />
                           <span>Year {v.year}</span>
                         </div>
                         <div className="flex items-center gap-2 col-span-2">
-                          <span className="font-semibold text-slate-500">Odometer:</span>
-                          <span className="text-slate-300 font-semibold">{formatOdometer(v.currentOdometer)}</span>
+                          <span className="font-semibold text-slate-400">Odometer:</span>
+                          <span className="text-slate-700 font-semibold dark:text-slate-300">{formatOdometer(v.currentOdometer)}</span>
                         </div>
                       </div>
                     </div>
@@ -222,7 +222,7 @@ const Vehicles = () => {
                     <div className="mt-6">
                       <Link
                         to={`/vehicles/${v._id}`}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-darkBg-850 hover:bg-brand-600 text-slate-200 hover:text-white text-xs font-semibold rounded-xl transition-all border border-darkBg-800 hover:border-brand-500/20 shadow-sm"
+                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 hover:bg-blue-600 hover:text-white hover:border-transparent text-xs font-semibold rounded-xl transition-all shadow-sm dark:bg-darkBg-850 dark:border-darkBg-800 dark:text-slate-200 dark:hover:bg-brand-600"
                       >
                         <Eye className="h-4 w-4" />
                         Inspect Health & Logs

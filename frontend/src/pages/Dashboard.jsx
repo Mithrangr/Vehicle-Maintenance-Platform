@@ -108,13 +108,13 @@ const Dashboard = () => {
               <div className="rounded-3xl bg-brand-500/10 p-5 text-brand-400 mb-6 border border-brand-500/25">
                 <Car className="h-12 w-12" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Register Your First Vehicle</h2>
-              <p className="mt-3 text-sm text-slate-400 leading-relaxed">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Register Your First Vehicle</h2>
+              <p className="mt-3 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                 Welcome to AeroKeep! Add your car, SUV, or motorcycle to start tracking maintenance logs, scheduling center slots, and predicting parts replacements.
               </p>
               <button
                 onClick={() => navigate('/vehicles')}
-                className="mt-8 inline-flex items-center gap-2 px-6 py-3 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl shadow-lg shadow-brand-500/20 active:transform active:scale-[0.98] transition-all"
+                className="mt-8 inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/10 active:transform active:scale-[0.98] transition-all dark:bg-brand-600 dark:hover:bg-brand-500 dark:shadow-brand-500/20"
               >
                 <Plus className="h-5 w-5" />
                 Add Vehicle
@@ -162,15 +162,15 @@ const Dashboard = () => {
                 {/* Fleet Health Meter & Quick Vehicles list */}
                 <div className="flex flex-col gap-6 lg:col-span-1">
                   <div className="glass-card">
-                    <h3 className="font-bold text-slate-100 mb-4">Fleet Health Status</h3>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-4">Fleet Health Status</h3>
                     <HealthWidget score={analytics?.averageHealthScore || 100} />
                   </div>
 
                   {/* Vehicles Quick Access */}
                   <div className="glass-card flex-1">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-bold text-slate-100">My Fleet</h3>
-                      <Link to="/vehicles" className="text-xs font-semibold text-brand-400 hover:text-brand-300 flex items-center gap-1">
+                      <h3 className="font-bold text-slate-800 dark:text-slate-100">My Fleet</h3>
+                      <Link to="/vehicles" className="text-xs font-semibold text-blue-600 hover:text-blue-500 dark:text-brand-400 dark:hover:text-brand-300 flex items-center gap-1">
                         View All <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
                     </div>
@@ -179,13 +179,13 @@ const Dashboard = () => {
                         <Link
                           key={vehicle._id}
                           to={`/vehicles/${vehicle._id}`}
-                          className="flex items-center justify-between p-3.5 rounded-xl bg-darkBg-900 border border-darkBg-850 hover:border-brand-500/20 hover:bg-darkBg-850/30 transition-all group"
+                          className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/60 border border-slate-100 hover:border-blue-500/20 hover:bg-blue-50/20 transition-all group dark:bg-darkBg-900 dark:border-darkBg-850 dark:hover:border-brand-500/20 dark:hover:bg-darkBg-850/30"
                         >
                           <div>
-                            <p className="font-semibold text-sm text-slate-200 group-hover:text-brand-400 transition-colors">
+                            <p className="font-semibold text-sm text-slate-700 group-hover:text-blue-600 transition-colors dark:text-slate-200 dark:group-hover:text-brand-400">
                               {vehicle.manufacturer} {vehicle.model}
                             </p>
-                            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider dark:text-slate-500">
                               {vehicle.registrationNumber} • {formatOdometer(vehicle.currentOdometer)}
                             </span>
                           </div>
@@ -195,7 +195,7 @@ const Dashboard = () => {
                               {vehicle.prediction.healthScore}%
                             </span>
                           ) : (
-                            <span className="text-xs text-slate-500">Calculating...</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500">Calculating...</span>
                           )}
                         </Link>
                       ))}
@@ -207,42 +207,42 @@ const Dashboard = () => {
                 <div className="flex flex-col gap-6 lg:col-span-2">
                   {/* Urgent Maintenance Warnings */}
                   <div className="glass-card">
-                    <h3 className="font-bold text-slate-100 mb-4 flex items-center gap-2">
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
                       <AlertTriangle className="h-5 w-5 text-amber-500" />
                       Alert Tracker
                     </h3>
                     
                     {urgentItems.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-10 text-center border border-dashed border-darkBg-800 rounded-xl bg-darkBg-900/10">
+                      <div className="flex flex-col items-center justify-center py-10 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 dark:border-darkBg-800 dark:bg-darkBg-900/10">
                         <ShieldCheck className="h-10 w-10 text-emerald-500 mb-2.5" />
-                        <p className="font-semibold text-slate-200 text-sm">All Systems Healthy</p>
-                        <p className="text-xs text-slate-500 mt-1">No pending maintenance alerts detected.</p>
+                        <p className="font-semibold text-slate-700 dark:text-slate-200 text-sm">All Systems Healthy</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">No pending maintenance alerts detected.</p>
                       </div>
                     ) : (
                       <div className="grid gap-3 sm:grid-cols-2">
                         {urgentItems.map((item, index) => (
                           <div
                             key={index}
-                            className="p-4 rounded-xl border border-darkBg-850 bg-darkBg-900 flex flex-col justify-between"
+                            className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 flex flex-col justify-between dark:border-darkBg-850 dark:bg-darkBg-900"
                           >
                             <div>
                               <div className="flex items-center justify-between mb-1.5">
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                                   item.status === 'Overdue'
-                                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                                    : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                                    ? 'bg-rose-50 border-rose-200/50 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400'
+                                    : 'bg-amber-50 border-amber-200/50 text-amber-600 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400'
                                 }`}>
                                   {item.status}
                                 </span>
-                                <span className="text-[10px] font-semibold text-slate-500">
+                                <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
                                   Score: {item.priorityScore}
                                 </span>
                               </div>
-                              <h4 className="font-semibold text-sm text-slate-200">{item.category}</h4>
-                              <p className="text-xs text-slate-400 mt-0.5">{item.vehicleName} ({item.regNo})</p>
+                              <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200">{item.category}</h4>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{item.vehicleName} ({item.regNo})</p>
                             </div>
                             
-                            <div className="mt-4 pt-3 border-t border-darkBg-850 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 font-medium dark:border-darkBg-850">
                               <span>Distance: {item.remainingDistance <= 0 ? 'Limit Exceeded' : `${item.remainingDistance} km`}</span>
                               <span>Days: {item.remainingDays <= 0 ? 'Time Exceeded' : `${item.remainingDays}d`}</span>
                             </div>
@@ -257,28 +257,28 @@ const Dashboard = () => {
                     {/* Appointments Card */}
                     <div className="glass-card flex flex-col">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-slate-100 flex items-center gap-2">
-                          <Calendar className="h-5 w-5 text-brand-400" />
+                        <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                          <Calendar className="h-5 w-5 text-blue-500 dark:text-brand-400" />
                           Upcoming Services
                         </h3>
-                        <Link to="/appointments" className="text-xs font-semibold text-brand-400 hover:text-brand-300">
+                        <Link to="/appointments" className="text-xs font-semibold text-blue-600 hover:text-blue-500 dark:text-brand-400 dark:hover:text-brand-300">
                           Book Slot
                         </Link>
                       </div>
 
                       <div className="space-y-3 flex-1">
                         {upcomingAppts.length === 0 ? (
-                          <div className="flex h-32 flex-col items-center justify-center text-center border border-dashed border-darkBg-800 rounded-xl bg-darkBg-900/10">
-                            <p className="text-xs text-slate-500">No scheduled appointments</p>
+                          <div className="flex h-32 flex-col items-center justify-center text-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 dark:border-darkBg-800 dark:bg-darkBg-900/10">
+                            <p className="text-xs text-slate-400 dark:text-slate-500">No scheduled appointments</p>
                           </div>
                         ) : (
                           upcomingAppts.map((appt) => (
                             <div
                               key={appt._id}
-                              className="p-3.5 rounded-xl border border-darkBg-850 bg-darkBg-900 flex items-center justify-between"
+                              className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/60 flex items-center justify-between dark:border-darkBg-850 dark:bg-darkBg-900"
                             >
                               <div>
-                                <p className="text-sm font-semibold text-slate-200">{appt.serviceCategory}</p>
+                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{appt.serviceCategory}</p>
                                 <p className="text-[10px] text-slate-400 mt-0.5">
                                   {appt.vehicle.manufacturer} {appt.vehicle.model} • {formatDate(appt.appointmentDate)}
                                 </p>
@@ -286,8 +286,8 @@ const Dashboard = () => {
                               
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                                 appt.status === 'Confirmed'
-                                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                  : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                                  ? 'bg-emerald-550 border-emerald-200/50 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400'
+                                  : 'bg-amber-50 border-amber-200/50 text-amber-600 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400'
                               }`}>
                                 {appt.status}
                               </span>
@@ -299,31 +299,31 @@ const Dashboard = () => {
 
                     {/* Inbox Notifications list */}
                     <div className="glass-card flex flex-col">
-                      <h3 className="font-bold text-slate-100 mb-4 flex items-center gap-2">
-                        <Bell className="h-5 w-5 text-brand-400" />
+                      <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+                        <Bell className="h-5 w-5 text-blue-500 dark:text-brand-400" />
                         Inbox Alert Feed
                       </h3>
 
                       <div className="space-y-3 flex-1">
                         {notifications.filter(n => !n.isRead).length === 0 ? (
-                          <div className="flex h-32 flex-col items-center justify-center text-center border border-dashed border-darkBg-800 rounded-xl bg-darkBg-900/10">
-                            <p className="text-xs text-slate-500">Inbox is empty</p>
+                          <div className="flex h-32 flex-col items-center justify-center text-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 dark:border-darkBg-800 dark:bg-darkBg-900/10">
+                            <p className="text-xs text-slate-400 dark:text-slate-500">Inbox is empty</p>
                           </div>
                         ) : (
                           notifications.filter(n => !n.isRead).slice(0, 3).map((notif) => (
                             <div
                               key={notif._id}
-                              className="p-3.5 rounded-xl border border-darkBg-850 bg-darkBg-900 flex items-start gap-2.5 relative group"
+                              className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/60 flex items-start gap-2.5 relative group dark:border-darkBg-850 dark:bg-darkBg-900"
                             >
                               <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-slate-200 truncate">{notif.title}</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1 leading-normal">
+                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{notif.title}</p>
+                                <p className="text-[10px] text-slate-450 dark:text-slate-400 mt-0.5 line-clamp-1 leading-normal">
                                   {notif.message}
                                 </p>
                               </div>
                               <button
                                 onClick={() => handleMarkAsRead(notif._id)}
-                                className="text-[10px] font-bold text-brand-400 hover:text-brand-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="text-[10px] font-bold text-blue-600 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity dark:text-brand-400 dark:hover:text-brand-300"
                               >
                                 Mark Read
                               </button>

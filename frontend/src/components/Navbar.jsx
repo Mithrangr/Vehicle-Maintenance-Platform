@@ -12,7 +12,8 @@ import {
   LogOut,
   Wrench,
   AlertOctagon,
-  CalendarCheck
+  CalendarCheck,
+  Home
 } from 'lucide-react';
 
 const Navbar = ({ onToggleSidebar, title }) => {
@@ -21,13 +22,13 @@ const Navbar = ({ onToggleSidebar, title }) => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true); // Default dark
+  const [isDarkMode, setIsDarkMode] = useState(false); // Default light
   const notifRef = useRef();
   const profileRef = useRef();
 
   // Load theme and notifications
   useEffect(() => {
-    const theme = localStorage.getItem('theme') || 'dark';
+    const theme = localStorage.getItem('theme') || 'light';
     setIsDarkMode(theme === 'dark');
     if (theme === 'dark') {
       document.body.classList.add('dark');
@@ -117,17 +118,37 @@ const Navbar = ({ onToggleSidebar, title }) => {
   };
 
   return (
-    <header className="flex h-16 w-full items-center justify-between border-b border-slate-200/80 bg-white/70 px-6 backdrop-blur-md dark:border-darkBg-850 dark:bg-darkBg-900/50">
+    <header className="flex h-16 w-full items-center justify-between border-b border-slate-100 bg-white px-6 dark:border-darkBg-850 dark:bg-darkBg-900">
       {/* Title & Menu Toggle */}
       <div className="flex items-center gap-4">
         <button
           onClick={onToggleSidebar}
-          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-darkBg-800 lg:hidden transition-colors"
+          className="rounded-xl p-2 text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-darkBg-800 lg:hidden transition-colors border border-slate-100 dark:border-darkBg-800"
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-4 w-4" />
         </button>
-        <h1 className="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
-          {title}
+        
+        {/* Breadcrumbs */}
+        <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 font-medium tracking-wide uppercase">
+          <Link to="/dashboard" className="hover:text-slate-600 dark:hover:text-slate-300">
+            <Home className="h-3.5 w-3.5 text-slate-400" />
+          </Link>
+          <span className="text-slate-300 dark:text-slate-700 font-light">&gt;</span>
+          {title.includes('>') ? (
+            title.split('>').map((part, index, arr) => (
+              <React.Fragment key={index}>
+                <span className={index === arr.length - 1 ? "text-slate-800 dark:text-slate-200 font-semibold" : "hover:text-slate-600 dark:hover:text-slate-300"}>
+                  {part.trim()}
+                </span>
+                {index < arr.length - 1 && <span className="text-slate-300 dark:text-slate-700 font-light">&gt;</span>}
+              </React.Fragment>
+            ))
+          ) : (
+            <span className="text-slate-800 dark:text-slate-200 font-semibold">{title}</span>
+          )}
+        </div>
+        <h1 className="text-base font-bold text-slate-800 dark:text-slate-100 sm:hidden">
+          {title.includes('>') ? title.split('>').pop() : title}
         </h1>
       </div>
 
