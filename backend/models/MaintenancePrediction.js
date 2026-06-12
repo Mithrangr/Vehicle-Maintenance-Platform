@@ -3,12 +3,23 @@ const mongoose = require('mongoose');
 const PredictionCategorySchema = new mongoose.Schema({
   category: {
     type: String,
-    enum: ['Engine Oil', 'Brake System', 'Battery', 'Coolant', 'Air Filter', 'Tires'],
+    enum: [
+      'Engine Oil',
+      'Brake Pads',
+      'Brake Fluid',
+      'Tires',
+      'Battery',
+      'Coolant',
+      'Air Filter',
+      'Wiper Blades',
+      'First Aid Kit Expiry',
+      'General Vehicle Service'
+    ],
     required: true,
   },
   status: {
     type: String,
-    enum: ['Healthy', 'Due Soon', 'Overdue'],
+    enum: ['Healthy', 'Attention Required', 'Maintenance Due Soon', 'Critical'],
     required: true,
     default: 'Healthy',
   },
@@ -31,6 +42,33 @@ const PredictionCategorySchema = new mongoose.Schema({
     min: 0,
     max: 100,
     required: true,
+  },
+  healthPercent: {
+    type: Number,
+    min: 0,
+    max: 100,
+    required: true,
+    default: 100,
+  },
+  predictedDate: {
+    type: Date,
+  },
+  priorityLevel: {
+    type: String,
+    enum: ['None', 'Low', 'Medium', 'High', 'Critical'],
+    required: true,
+    default: 'None',
+  },
+  estimatedCost: {
+    type: Number,
+    required: true,
+    default: 0,
+  },
+  recommendedAction: {
+    type: String,
+  },
+  serviceWindow: {
+    type: String,
   },
 });
 

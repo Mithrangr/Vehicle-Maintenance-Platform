@@ -53,6 +53,21 @@ const VehicleSchema = new mongoose.Schema(
       required: [true, 'Vehicle type is required'],
       enum: ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Minivan', 'Pickup Truck', 'Truck', 'Van', 'Motorcycle', 'Other'],
     },
+    telemetry: {
+      batteryHealth: { type: Number, default: 100 },
+      batteryVoltage: { type: Number, default: 12.6 },
+      brakePadWear: { type: Number, default: 0 },
+      coolantTemp: { type: Number, default: 90 },
+      tirePressure: {
+        fl: { type: Number, default: 33 },
+        fr: { type: Number, default: 33 },
+        rl: { type: Number, default: 33 },
+        rr: { type: Number, default: 33 },
+      },
+      obdDtc: { type: [String], default: [] },
+      sensorAlerts: { type: [String], default: [] },
+      lastUpdated: { type: Date, default: Date.now },
+    },
   },
   {
     timestamps: true,

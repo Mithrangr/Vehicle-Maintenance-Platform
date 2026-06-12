@@ -20,7 +20,19 @@ const ServiceRecordSchema = new mongoose.Schema(
     serviceCategory: {
       type: String,
       required: [true, 'Service category is required'],
-      enum: ['Engine Oil', 'Brake System', 'Battery', 'Coolant', 'Air Filter', 'Tires', 'General Maintenance', 'Other'],
+      enum: [
+        'Engine Oil',
+        'Brake Pads',
+        'Brake Fluid',
+        'Battery',
+        'Coolant',
+        'Air Filter',
+        'Tires',
+        'Wiper Blades',
+        'First Aid Kit Expiry',
+        'General Vehicle Service',
+        'Other',
+      ],
     },
     serviceDescription: {
       type: String,

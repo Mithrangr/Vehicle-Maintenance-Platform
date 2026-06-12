@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
@@ -12,10 +13,11 @@ import {
   AlertTriangle,
   CalendarCheck,
   CheckCircle2,
-  Eye
+  ExternalLink,
 } from 'lucide-react';
 
 const Notifications = () => {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('all'); // all, unread, read
@@ -78,6 +80,13 @@ const Notifications = () => {
     }
   };
 
+  const handleNotifClick = (notif) => {
+    if (notif.link) {
+      if (!notif.isRead) handleMarkAsRead(notif._id);
+      navigate(notif.link);
+    }
+  };
+
   const getNotifStyle = (type) => {
     switch (type) {
       case 'Maintenance Overdue':
@@ -110,6 +119,36 @@ const Notifications = () => {
   });
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  // Group notifications by date
+  const groupByDate = (notifs) => {
+    const groups = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    notifs.forEach((n) => {
+      const d = new Date(n.createdAt);
+      d.setHours(0, 0, 0, 0);
+      let label;
+      if (d.getTime() === today.getTime()) label = 'Today';
+      else if (d.getTime() === yesterday.getTime()) label = 'Yesterday';
+      else if (d >= weekAgo) label = 'This Week';
+      else label = 'Earlier';
+
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(n);
+    });
+
+    // Return in order
+    const order = ['Today', 'Yesterday', 'This Week', 'Earlier'];
+    return order.filter((k) => groups[k]).map((k) => ({ label: k, items: groups[k] }));
+  };
+
+  const groupedNotifs = groupByDate(filteredNotifs);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50 dark:bg-darkBg-950">
@@ -154,73 +193,90 @@ const Notifications = () => {
               ))}
             </div>
 
-            {/* Notifications List */}
+            {/* Notifications List — Grouped by Date */}
             {loading ? (
               <div className="flex justify-center py-20">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-500 border-t-transparent"></div>
               </div>
-            ) : filteredNotifs.length === 0 ? (
+            ) : groupedNotifs.length === 0 ? (
               <div className="text-center py-20 border border-dashed border-darkBg-850 rounded-2xl bg-darkBg-900/10">
                 <Bell className="h-10 w-10 text-slate-600 mx-auto mb-3" />
                 <p className="text-sm font-semibold text-slate-300">All caught up</p>
                 <p className="text-xs text-slate-500 mt-1">No alerts found matching your filter criteria.</p>
               </div>
             ) : (
-              <div className="space-y-3.5">
-                {filteredNotifs.map((notif) => {
-                  const style = getNotifStyle(notif.type);
-                  return (
-                    <div
-                      key={notif._id}
-                      className={`p-4 rounded-2xl border flex items-start justify-between gap-4 transition-all ${
-                        !notif.isRead
-                          ? 'bg-darkBg-900/60 border-darkBg-800'
-                          : 'bg-darkBg-900/25 border-darkBg-850 opacity-70'
-                      }`}
-                    >
-                      <div className="flex gap-3.5 flex-1 min-w-0">
-                        <div className={`rounded-xl p-2.5 h-10 w-10 flex items-center justify-center border shrink-0 ${style.bg}`}>
-                          {style.icon}
-                        </div>
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className={`text-sm font-semibold ${!notif.isRead ? 'text-slate-200' : 'text-slate-400'}`}>
-                              {notif.title}
-                            </h4>
-                            {!notif.isRead && (
-                              <span className="h-1.5 w-1.5 rounded-full bg-brand-500 shrink-0" />
-                            )}
-                          </div>
-                          <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
-                            {notif.message}
-                          </p>
-                          <span className="text-[10px] text-slate-500 font-semibold block pt-1">
-                            {formatDate(notif.createdAt)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0 self-center">
-                        {!notif.isRead && (
-                          <button
-                            onClick={() => handleMarkAsRead(notif._id)}
-                            className="p-1.5 bg-darkBg-800 border border-darkBg-750 hover:bg-darkBg-700 text-slate-400 hover:text-slate-200 rounded-lg transition-colors"
-                            title="Mark as read"
+              <div className="space-y-6">
+                {groupedNotifs.map((group) => (
+                  <div key={group.label}>
+                    <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 pl-1">
+                      {group.label}
+                    </h3>
+                    <div className="space-y-3.5">
+                      {group.items.map((notif) => {
+                        const style = getNotifStyle(notif.type);
+                        return (
+                          <div
+                            key={notif._id}
+                            className={`p-4 rounded-2xl border flex items-start justify-between gap-4 transition-all ${
+                              !notif.isRead
+                                ? 'bg-darkBg-900/60 border-darkBg-800'
+                                : 'bg-darkBg-900/25 border-darkBg-850 opacity-70'
+                            } ${notif.link ? 'cursor-pointer hover:border-brand-500/20' : ''}`}
+                            onClick={() => handleNotifClick(notif)}
                           >
-                            <Check className="h-4 w-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDelete(notif._id)}
-                          className="p-1.5 bg-darkBg-800 border border-darkBg-750 hover:border-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg transition-colors"
-                          title="Delete notification"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                            <div className="flex gap-3.5 flex-1 min-w-0">
+                              <div className={`rounded-xl p-2.5 h-10 w-10 flex items-center justify-center border shrink-0 ${style.bg}`}>
+                                {style.icon}
+                              </div>
+                              <div className="space-y-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className={`text-sm font-semibold ${!notif.isRead ? 'text-slate-200' : 'text-slate-400'}`}>
+                                    {notif.title}
+                                  </h4>
+                                  {!notif.isRead && (
+                                    <span className="h-1.5 w-1.5 rounded-full bg-brand-500 shrink-0" />
+                                  )}
+                                </div>
+                                <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
+                                  {notif.message}
+                                </p>
+                                <div className="flex items-center gap-3 pt-1">
+                                  <span className="text-[10px] text-slate-500 font-semibold">
+                                    {formatDate(notif.createdAt)}
+                                  </span>
+                                  {notif.link && (
+                                    <span className="text-[10px] font-bold text-brand-400 flex items-center gap-0.5">
+                                      <ExternalLink className="h-3 w-3" /> View Details
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0 self-center" onClick={(e) => e.stopPropagation()}>
+                              {!notif.isRead && (
+                                <button
+                                  onClick={() => handleMarkAsRead(notif._id)}
+                                  className="p-1.5 bg-darkBg-800 border border-darkBg-750 hover:bg-darkBg-700 text-slate-400 hover:text-slate-200 rounded-lg transition-colors"
+                                  title="Mark as read"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDelete(notif._id)}
+                                className="p-1.5 bg-darkBg-800 border border-darkBg-750 hover:border-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg transition-colors"
+                                title="Delete notification"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             )}
           </div>

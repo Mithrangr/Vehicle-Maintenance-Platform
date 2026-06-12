@@ -15,7 +15,21 @@ const AppointmentSchema = new mongoose.Schema(
     serviceCategory: {
       type: String,
       required: [true, 'Service category is required'],
-      enum: ['Engine Oil', 'Brake System', 'Battery', 'Coolant', 'Air Filter', 'Tires', 'General Maintenance', 'Other'],
+      enum: [
+        'Engine Oil',
+        'Brake Pads',
+        'Brake Fluid',
+        'Tires',
+        'Battery',
+        'Coolant',
+        'Air Filter',
+        'Wiper Blades',
+        'First Aid Kit Expiry',
+        'General Vehicle Service',
+        'Brake System',
+        'General Maintenance',
+        'Other'
+      ],
     },
     appointmentDate: {
       type: Date,

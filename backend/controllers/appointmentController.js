@@ -94,6 +94,7 @@ exports.bookAppointment = async (req, res, next) => {
       type: 'System Notification',
       title: 'Appointment Booked',
       message: `Your appointment for ${serviceCategory} on ${parsedDate.toLocaleDateString()} has been requested.`,
+      link: '/appointments',
     });
 
     res.status(201).json({
@@ -141,6 +142,7 @@ exports.rescheduleAppointment = async (req, res, next) => {
       type: 'Appointment Reminder',
       title: 'Appointment Rescheduled',
       message: `Your appointment has been successfully rescheduled to ${parsedDate.toLocaleString()}.`,
+      link: '/appointments',
     });
 
     res.json({
@@ -176,6 +178,7 @@ exports.cancelAppointment = async (req, res, next) => {
       type: 'System Notification',
       title: 'Appointment Cancelled',
       message: `Your appointment on ${new Date(appointment.appointmentDate).toLocaleDateString()} was cancelled.`,
+      link: '/appointments',
     });
 
     res.json({
@@ -223,6 +226,7 @@ exports.updateAppointmentStatus = async (req, res, next) => {
       type: 'Appointment Reminder',
       title,
       message: msg,
+      link: '/appointments',
     });
 
     res.json({

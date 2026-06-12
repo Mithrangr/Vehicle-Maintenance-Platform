@@ -44,19 +44,24 @@ exports.getDashboardAnalytics = async (req, res, next) => {
       // Group overall vehicle status based on its worst component
       let worstStatus = 'Healthy';
       pred.predictions.forEach((p) => {
-        if (p.status === 'Overdue') {
+        if (p.status === 'Critical') {
           overdueMaintenance++;
-          worstStatus = 'Overdue';
-        } else if (p.status === 'Due Soon') {
+          worstStatus = 'Critical';
+        } else if (p.status === 'Maintenance Due Soon') {
           upcomingMaintenance++;
-          if (worstStatus !== 'Overdue') {
-            worstStatus = 'Due Soon';
+          if (worstStatus !== 'Critical') {
+            worstStatus = 'Maintenance Due Soon';
+          }
+        } else if (p.status === 'Attention Required') {
+          upcomingMaintenance++;
+          if (worstStatus === 'Healthy') {
+            worstStatus = 'Attention Required';
           }
         }
       });
 
-      if (worstStatus === 'Overdue') overdueCount++;
-      else if (worstStatus === 'Due Soon') dueSoonCount++;
+      if (worstStatus === 'Critical') overdueCount++;
+      else if (worstStatus === 'Maintenance Due Soon' || worstStatus === 'Attention Required') dueSoonCount++;
       else healthyCount++;
     });
 
@@ -124,9 +129,43 @@ exports.getDashboardAnalytics = async (req, res, next) => {
         },
         monthlyCosts,
         categoryCosts,
+        // Maintenance cost forecast from prediction data
+        costForecast: getCostForecast(predictions),
       },
     });
   } catch (error) {
     next(error);
   }
+};
+
+/**
+ * Compute the upcoming maintenance cost forecast from all vehicle predictions.
+ */
+const getCostForecast = (predictions) => {
+  const forecast = [];
+
+  predictions.forEach((pred) => {
+    pred.predictions.forEach((p) => {
+      if (p.status !== 'Healthy') {
+        forecast.push({
+          category: p.category,
+          status: p.status,
+          estimatedCost: p.estimatedCost,
+          remainingDays: p.remainingDays,
+          predictedDate: p.predictedDate,
+          priorityLevel: p.priorityLevel,
+        });
+      }
+    });
+  });
+
+  // Sort by urgency (priorityScore descending → remaining days ascending)
+  forecast.sort((a, b) => a.remainingDays - b.remainingDays);
+
+  const totalForecastCost = forecast.reduce((sum, f) => sum + f.estimatedCost, 0);
+
+  return {
+    items: forecast,
+    totalEstimatedCost: totalForecastCost,
+  };
 };

@@ -32,6 +32,11 @@ const NotificationSchema = new mongoose.Schema(
       required: true,
       default: false,
     },
+    link: {
+      type: String,
+      trim: true,
+      default: '',
+    },
   },
   {
     timestamps: true,

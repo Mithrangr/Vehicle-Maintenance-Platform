@@ -5,7 +5,7 @@ import StatCard from '../components/StatCard';
 import HealthWidget from '../components/HealthWidget';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
-import { formatOdometer, formatDate, formatRelativeTime, getHealthBg } from '../utils/format';
+import { formatOdometer, formatCost, formatDate, formatRelativeTime, getHealthBg } from '../utils/format';
 import {
   Car,
   Wrench,
@@ -80,6 +80,14 @@ const Dashboard = () => {
     });
     // Sort by priorityScore descending
     return urgent.sort((a, b) => b.priorityScore - a.priorityScore).slice(0, 4);
+  };
+
+  const getUrgencyLabel = (item) => {
+    if (item.status === 'Critical') return 'Immediate Action';
+    if (item.remainingDays <= 7) return `Due in ${item.remainingDays}d`;
+    if (item.remainingDays <= 30) return `Due in ${item.remainingDays}d`;
+    if (item.remainingDistance > 0 && item.remainingDistance <= 1000) return `${item.remainingDistance} km left`;
+    return item.priorityLevel || 'Attention';
   };
 
   const urgentItems = getUrgentPredictions();
@@ -157,6 +165,31 @@ const Dashboard = () => {
                 />
               </div>
 
+              {/* Quick Actions Row */}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => navigate('/vehicles')}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 transition-all shadow-sm dark:bg-darkBg-900 dark:border-darkBg-850 dark:text-slate-200 dark:hover:bg-darkBg-850"
+                >
+                  <Plus className="h-4 w-4 text-blue-500 dark:text-brand-400" />
+                  Add Vehicle
+                </button>
+                <button
+                  onClick={() => navigate('/services')}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 transition-all shadow-sm dark:bg-darkBg-900 dark:border-darkBg-850 dark:text-slate-200 dark:hover:bg-darkBg-850"
+                >
+                  <Wrench className="h-4 w-4 text-emerald-500" />
+                  Log Service
+                </button>
+                <button
+                  onClick={() => navigate('/appointments')}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 transition-all shadow-sm dark:bg-darkBg-900 dark:border-darkBg-850 dark:text-slate-200 dark:hover:bg-darkBg-850"
+                >
+                  <Calendar className="h-4 w-4 text-amber-500" />
+                  Book Appointment
+                </button>
+              </div>
+
               {/* Lower Body Layout */}
               <div className="grid gap-6 lg:grid-cols-3">
                 {/* Fleet Health Meter & Quick Vehicles list */}
@@ -221,30 +254,39 @@ const Dashboard = () => {
                     ) : (
                       <div className="grid gap-3 sm:grid-cols-2">
                         {urgentItems.map((item, index) => (
-                          <div
-                            key={index}
-                            className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 flex flex-col justify-between dark:border-darkBg-850 dark:bg-darkBg-900"
+                          <div key={index} className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 flex flex-col justify-between dark:border-darkBg-850 dark:bg-darkBg-900"
                           >
                             <div>
                               <div className="flex items-center justify-between mb-1.5">
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                                  item.status === 'Overdue'
+                                  item.status === 'Critical'
                                     ? 'bg-rose-50 border-rose-200/50 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400'
                                     : 'bg-amber-50 border-amber-200/50 text-amber-600 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400'
                                 }`}>
                                   {item.status}
                                 </span>
-                                <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
-                                  Score: {item.priorityScore}
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                                  item.status === 'Critical'
+                                    ? 'border-rose-200/30 text-rose-500 dark:border-rose-500/20 dark:text-rose-400'
+                                    : 'border-amber-200/30 text-amber-500 dark:border-amber-500/20 dark:text-amber-400'
+                                }`}>
+                                  {getUrgencyLabel(item)}
                                 </span>
                               </div>
                               <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200">{item.category}</h4>
                               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{item.vehicleName} ({item.regNo})</p>
                             </div>
                             
-                            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 font-medium dark:border-darkBg-850">
-                              <span>Distance: {item.remainingDistance <= 0 ? 'Limit Exceeded' : `${item.remainingDistance} km`}</span>
-                              <span>Days: {item.remainingDays <= 0 ? 'Time Exceeded' : `${item.remainingDays}d`}</span>
+                            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between dark:border-darkBg-850">
+                              <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                                Est. {formatCost(item.estimatedCost)}
+                              </span>
+                              <button
+                                onClick={() => navigate(`/vehicles/${item.vehicleId}`)}
+                                className="text-[10px] font-bold text-blue-600 hover:text-blue-500 dark:text-brand-400 dark:hover:text-brand-300 flex items-center gap-1"
+                              >
+                                View & Book <ArrowRight className="h-3 w-3" />
+                              </button>
                             </div>
                           </div>
                         ))}

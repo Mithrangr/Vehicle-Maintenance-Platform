@@ -6,6 +6,7 @@ const {
   addVehicle,
   updateVehicle,
   deleteVehicle,
+  updateVehicleTelemetry,
 } = require('../controllers/vehicleController');
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validation');
@@ -13,6 +14,8 @@ const validate = require('../middleware/validation');
 const router = express.Router();
 
 router.use(protect);
+
+router.post('/:id/telemetry', updateVehicleTelemetry);
 
 router
   .route('/')

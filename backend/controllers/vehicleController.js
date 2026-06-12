@@ -4,6 +4,7 @@ const MaintenancePrediction = require('../models/MaintenancePrediction');
 const Appointment = require('../models/Appointment');
 const Notification = require('../models/Notification');
 const { calculatePrediction } = require('../services/predictionService');
+const { lookupObdCode } = require('../services/obdCodes');
 
 // @desc    Get all vehicles (authenticated user)
 // @route   GET /api/vehicles
@@ -224,6 +225,104 @@ exports.deleteVehicle = async (req, res, next) => {
     res.json({
       success: true,
       message: 'Vehicle and all associated records deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update vehicle telemetry (OBD-II and sensor inputs)
+// @route   POST /api/vehicles/:id/telemetry
+// @access  Private
+exports.updateVehicleTelemetry = async (req, res, next) => {
+  try {
+    const vehicle = await Vehicle.findById(req.params.id);
+    if (!vehicle) {
+      return res.status(404).json({ success: false, message: 'Vehicle not found' });
+    }
+
+    // Verify ownership or admin
+    if (vehicle.owner.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to update telemetry for this vehicle' });
+    }
+
+    const {
+      currentOdometer,
+      batteryHealth,
+      batteryVoltage,
+      brakePadWear,
+      coolantTemp,
+      tirePressure,
+      obdDtc,
+      sensorAlerts,
+    } = req.body;
+
+    // Update odometer if provided and valid
+    if (currentOdometer !== undefined) {
+      if (currentOdometer < vehicle.currentOdometer) {
+        return res.status(400).json({ success: false, message: 'New odometer value cannot be less than current reading' });
+      }
+      vehicle.currentOdometer = currentOdometer;
+    }
+
+    // Update telemetry subdocument fields
+    if (!vehicle.telemetry) {
+      vehicle.telemetry = {};
+    }
+
+    if (batteryHealth !== undefined) vehicle.telemetry.batteryHealth = batteryHealth;
+    if (batteryVoltage !== undefined) vehicle.telemetry.batteryVoltage = batteryVoltage;
+    if (brakePadWear !== undefined) vehicle.telemetry.brakePadWear = brakePadWear;
+    if (coolantTemp !== undefined) vehicle.telemetry.coolantTemp = coolantTemp;
+    if (obdDtc !== undefined) vehicle.telemetry.obdDtc = obdDtc;
+    if (sensorAlerts !== undefined) vehicle.telemetry.sensorAlerts = sensorAlerts;
+    if (tirePressure !== undefined) {
+      vehicle.telemetry.tirePressure = {
+        fl: tirePressure.fl !== undefined ? tirePressure.fl : vehicle.telemetry.tirePressure.fl,
+        fr: tirePressure.fr !== undefined ? tirePressure.fr : vehicle.telemetry.tirePressure.fr,
+        rl: tirePressure.rl !== undefined ? tirePressure.rl : vehicle.telemetry.tirePressure.rl,
+        rr: tirePressure.rr !== undefined ? tirePressure.rr : vehicle.telemetry.tirePressure.rr,
+      };
+    }
+    vehicle.telemetry.lastUpdated = Date.now();
+
+    await vehicle.save();
+
+    // Recalculate predictions after telemetry changes
+    const prediction = await calculatePrediction(vehicle._id);
+
+    // If OBD trouble codes are triggered, create custom active alert notifications
+    if (obdDtc && obdDtc.length > 0) {
+      for (const code of obdDtc) {
+        const obdInfo = lookupObdCode(code);
+        const title = `OBD-II Code Triggered: ${code}`;
+        const message = `${obdInfo.description}. ${obdInfo.action}`;
+
+        const exists = await Notification.findOne({
+          user: vehicle.owner,
+          vehicle: vehicle._id,
+          title,
+          isRead: false,
+        });
+
+        if (!exists) {
+          await Notification.create({
+            user: vehicle.owner,
+            vehicle: vehicle._id,
+            type: 'Maintenance Overdue',
+            title,
+            message,
+            link: `/vehicles/${vehicle._id}`,
+          });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Telemetry updated and predictions recalculated',
+      vehicle,
+      prediction,
     });
   } catch (error) {
     next(error);

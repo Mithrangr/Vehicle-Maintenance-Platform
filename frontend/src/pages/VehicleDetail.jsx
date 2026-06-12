@@ -6,7 +6,7 @@ import Sidebar from '../components/Sidebar';
 import HealthWidget from '../components/HealthWidget';
 import Modal from '../components/Modal';
 import Toast from '../components/Toast';
-import { formatOdometer, formatCost, formatDate, getPriorityColor } from '../utils/format';
+import { formatOdometer, formatCost, formatDate, getPriorityColor, formatRelativeTime } from '../utils/format';
 import {
   Car,
   Wrench,
@@ -21,7 +21,16 @@ import {
   History,
   AlertTriangle,
   Coins,
-  Store
+  Store,
+  CheckCircle2,
+  AlertOctagon,
+  Thermometer,
+  Zap,
+  Disc,
+  Gauge,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 const VehicleDetail = () => {
@@ -67,6 +76,7 @@ const VehicleDetail = () => {
   // UI state
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
+  const [isSimulatorExpanded, setIsSimulatorExpanded] = useState(false);
 
   useEffect(() => {
     fetchVehicleDetails();
@@ -98,7 +108,10 @@ const VehicleDetail = () => {
 
       if (apptRes.data.success) {
         const filtered = apptRes.data.appointments.filter(
-          (a) => (a.vehicle._id || a.vehicle) === id
+          (a) => {
+            const vehicleId = a.vehicle ? (typeof a.vehicle === 'object' ? a.vehicle._id : a.vehicle) : null;
+            return vehicleId === id;
+          }
         );
         setAppointments(filtered);
       }
@@ -251,7 +264,7 @@ const VehicleDetail = () => {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <Link
                   to="/vehicles"
-                  className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-650 transition-colors dark:hover:text-slate-200"
+                  className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-655 transition-colors dark:hover:text-slate-200"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Back to Fleet
@@ -292,11 +305,454 @@ const VehicleDetail = () => {
                 </div>
               </div>
 
+              {/* Infotainment Connected Vehicle Console */}
+              <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-6 text-white shadow-2xl dark:border-darkBg-850">
+                {/* Background grid line effects */}
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-transparent pointer-events-none" />
+                
+                <div className="relative z-10 flex flex-col xl:flex-row xl:items-stretch gap-6">
+                  {/* Health Score Gauge / Digital Clock & Status */}
+                  <div className="flex flex-col md:flex-row items-center gap-6 xl:w-2/5 border-b xl:border-b-0 xl:border-r border-slate-800 pb-6 xl:pb-0 xl:pr-6">
+                    {/* Gauge Visual */}
+                    <div className="relative flex items-center justify-center h-32 w-32 shrink-0">
+                      {/* Outer Ring */}
+                      <svg className="w-full h-full transform -rotate-90">
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="52"
+                          className="text-slate-800"
+                          strokeWidth="8"
+                          stroke="currentColor"
+                          fill="transparent"
+                        />
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="52"
+                          strokeWidth="8"
+                          strokeDasharray={2 * Math.PI * 52}
+                          strokeDashoffset={2 * Math.PI * 52 * (1 - (prediction?.healthScore || 100) / 100)}
+                          strokeLinecap="round"
+                          className={`transition-all duration-1000 ${
+                            (prediction?.healthScore || 100) >= 90
+                              ? 'text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                              : (prediction?.healthScore || 100) >= 75
+                              ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]'
+                              : (prediction?.healthScore || 100) >= 50
+                              ? 'text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                              : 'text-rose-500 animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.7)]'
+                          }`}
+                          fill="transparent"
+                        />
+                      </svg>
+                      {/* Inside Text */}
+                      <div className="absolute text-center">
+                        <span className="text-3xl font-extrabold tracking-tight font-mono">
+                          {prediction?.healthScore || 100}%
+                        </span>
+                        <span className="text-[10px] text-slate-400 uppercase tracking-widest block font-semibold">
+                          HEALTH
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Digital display status messages */}
+                    <div className="flex-1 space-y-2 text-center md:text-left">
+                      <div className="flex items-center justify-center md:justify-start gap-2 text-xs text-slate-400 font-mono">
+                        <span className={`h-2 w-2 rounded-full ${
+                          vehicle.telemetry?.lastUpdated && (new Date() - new Date(vehicle.telemetry.lastUpdated)) < 5 * 60 * 1000
+                            ? 'bg-emerald-500 animate-ping'
+                            : 'bg-slate-500'
+                        }`} />
+                        <span>
+                          {vehicle.telemetry?.lastUpdated 
+                            ? `TELEMETRY: ${formatRelativeTime(vehicle.telemetry.lastUpdated)}`
+                            : 'LIVE TELEMATICS CONNECTED'}
+                        </span>
+                      </div>
+                      <h2 className="text-xl font-bold tracking-tight text-white flex flex-wrap items-center justify-center md:justify-start gap-2">
+                        {vehicle.manufacturer} {vehicle.model}
+                        <span className="text-xs bg-slate-800 text-slate-300 font-mono px-2 py-0.5 rounded-lg border border-slate-700">
+                          {vehicle.registrationNumber}
+                        </span>
+                      </h2>
+                      
+                      {/* Health category status text */}
+                      <div className="text-sm font-semibold">
+                        Status Rating: {' '}
+                        <span className={
+                          (prediction?.healthScore || 100) >= 90
+                            ? 'text-emerald-400'
+                            : (prediction?.healthScore || 100) >= 75
+                            ? 'text-cyan-300'
+                            : (prediction?.healthScore || 100) >= 50
+                            ? 'text-amber-400'
+                            : 'text-rose-400'
+                        }>
+                          {(prediction?.healthScore || 100) >= 90
+                            ? 'Excellent (Nominal System)'
+                            : (prediction?.healthScore || 100) >= 75
+                            ? 'Good (Service Recommended)'
+                            : (prediction?.healthScore || 100) >= 50
+                            ? 'Attention Required'
+                            : 'Critical (Immediate Maintenance Required)'}
+                        </span>
+                      </div>
+
+                      <div className="text-xs text-slate-400 font-mono">
+                        Current Mileage: <span className="text-white font-bold">{formatOdometer(vehicle.currentOdometer)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Warning System console screen */}
+                  <div className="flex-1 flex flex-col justify-center gap-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-mono">
+                      SYSTEM INSTRUMENTATION WARNINGS
+                    </span>
+                    
+                    {/* Warnings List */}
+                    <div className="space-y-2 max-h-36 overflow-y-auto pr-2">
+                      {prediction?.predictions?.filter(p => p.status === 'Critical' || p.status === 'Maintenance Due Soon').length > 0 ? (
+                        prediction.predictions
+                          .filter(p => p.status === 'Critical' || p.status === 'Maintenance Due Soon')
+                          .map((alert, idx) => (
+                            <div
+                              key={idx}
+                              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border font-mono text-xs font-semibold select-none animate-pulse ${
+                                alert.status === 'Critical'
+                                  ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                                  : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                              }`}
+                            >
+                              <span className="text-base shrink-0">
+                                {alert.status === 'Critical' ? '🚨' : '⚠️'}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <span className="font-extrabold uppercase">
+                                  {alert.status === 'Critical' ? 'CRITICAL:' : 'ATTENTION:'} {alert.category}
+                                </span>
+                                <span className="block text-[10px] text-slate-400 font-medium leading-relaxed truncate mt-0.5">
+                                  {alert.recommendedAction}
+                                </span>
+                              </div>
+                              <span className="text-[9px] bg-slate-805 text-slate-300 px-2 py-0.5 rounded uppercase border border-slate-700 font-extrabold shrink-0">
+                                {alert.status === 'Critical' ? 'Critical' : 'Due Soon'}
+                              </span>
+                            </div>
+                          ))
+                      ) : (
+                        <div className="flex items-center gap-2 px-4 py-4 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-2xl font-mono text-xs">
+                          <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+                          <div>
+                            <span className="font-extrabold">ALL SYSTEMS OPERATIONAL</span>
+                            <span className="block text-[10px] text-emerald-500/70 font-medium mt-0.5">
+                              No predictive diagnostic trouble alerts active. Drive safely.
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* OBD Trouble Code alerts */}
+                      {vehicle.telemetry?.obdDtc?.map((code, idx) => (
+                        <div
+                          key={`obd-${idx}`}
+                          className="flex items-center gap-3 px-4 py-2.5 bg-red-650/15 border border-red-500/30 text-red-400 rounded-xl font-mono text-xs font-semibold animate-pulse"
+                        >
+                          <AlertOctagon className="h-4 w-4 shrink-0 text-red-500" />
+                          <div className="flex-1">
+                            <span className="font-extrabold uppercase">OBD-II CODE DETECTED: {code}</span>
+                            <span className="block text-[10px] text-slate-400 font-medium mt-0.5 leading-normal font-mono">
+                              {code === 'P0300' && 'Random/Multiple Cylinder Misfire Detected.'}
+                              {code === 'P0115' && 'Engine Coolant Temperature Sensor Malfunction.'}
+                              {code === 'P0420' && 'Catalyst System Efficiency Below Threshold.'}
+                              {!['P0300', 'P0115', 'P0420'].includes(code) && 'Diagnostic Trouble Code active.'}
+                            </span>
+                          </div>
+                          <span className="text-[9px] bg-red-950/50 border border-red-500/35 text-red-400 px-2 py-0.5 rounded font-extrabold shrink-0">
+                            FAULT
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Telemetry Live Gauges (Right side) */}
+                  <div className="xl:w-1/3 flex flex-col justify-center border-t xl:border-t-0 xl:border-l border-slate-800 pt-6 xl:pt-0 xl:pl-6 space-y-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-mono">
+                      LIVE INSTRUMENT CLUSTER
+                    </span>
+                    
+                    <div className="grid grid-cols-2 gap-3 font-mono text-xs">
+                      {/* Coolant Temp Gauge */}
+                      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex items-center gap-2">
+                        <Thermometer className={`h-5 w-5 ${
+                          (vehicle.telemetry?.coolantTemp || 90) > 105 ? 'text-red-500 animate-bounce' : 'text-blue-400'
+                        }`} />
+                        <div>
+                          <span className="text-[10px] text-slate-500 block uppercase font-semibold">COOLANT</span>
+                          <span className={`font-bold ${
+                            (vehicle.telemetry?.coolTemp || vehicle.telemetry?.coolantTemp || 90) > 105 ? 'text-red-400' : 'text-slate-200'
+                          }`}>
+                            {vehicle.telemetry?.coolantTemp || 90}°C
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Battery Voltage Gauge */}
+                      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex items-center gap-2">
+                        <Zap className={`h-5 w-5 ${
+                          (vehicle.telemetry?.batteryVoltage || 12.6) < 11.5 ? 'text-red-500 animate-pulse' : 'text-amber-400'
+                        }`} />
+                        <div>
+                          <span className="text-[10px] text-slate-500 block uppercase font-semibold">BATTERY</span>
+                          <span className={`font-bold ${
+                            (vehicle.telemetry?.batteryVoltage || 12.6) < 11.5 ? 'text-red-400' : 'text-slate-200'
+                          }`}>
+                            {vehicle.telemetry?.batteryVoltage || 12.6}V
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Brake Wear Gauge */}
+                      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex items-center gap-2">
+                        <Disc className={`h-5 w-5 ${
+                          (vehicle.telemetry?.brakePadWear || 10) > 80 ? 'text-red-500 animate-pulse' : 'text-slate-400'
+                        }`} />
+                        <div>
+                          <span className="text-[10px] text-slate-500 block uppercase font-semibold">BRAKES</span>
+                          <span className={`font-bold ${
+                            (vehicle.telemetry?.brakePadWear || 10) > 80 ? 'text-red-400' : 'text-slate-200'
+                          }`}>
+                            {vehicle.telemetry?.brakePadWear || 10}% wear
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Tire pressure status */}
+                      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex items-center gap-2">
+                        <Gauge className="h-5 w-5 text-cyan-400" />
+                        <div className="w-full">
+                          <span className="text-[10px] text-slate-500 block uppercase font-semibold">TPMS STATUS</span>
+                          <div className="grid grid-cols-2 text-[9px] text-slate-350 font-bold gap-x-1.5 leading-tight">
+                            <span>FL: <span className={(vehicle.telemetry?.tirePressure?.fl || 33) < 26 ? 'text-red-400' : 'text-emerald-400'}>{vehicle.telemetry?.tirePressure?.fl || 33}</span></span>
+                            <span>FR: <span className={(vehicle.telemetry?.tirePressure?.fr || 33) < 26 ? 'text-red-400' : 'text-emerald-400'}>{vehicle.telemetry?.tirePressure?.fr || 33}</span></span>
+                            <span>RL: <span className={(vehicle.telemetry?.tirePressure?.rl || 33) < 26 ? 'text-red-400' : 'text-emerald-400'}>{vehicle.telemetry?.tirePressure?.rl || 33}</span></span>
+                            <span>RR: <span className={(vehicle.telemetry?.tirePressure?.rr || 33) < 26 ? 'text-red-400' : 'text-emerald-400'}>{vehicle.telemetry?.tirePressure?.rr || 33}</span></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Main Panels */}
               <div className="grid gap-6 lg:grid-cols-3">
-                {/* Left side: Vehicle Specs & Activity Log */}
+                {/* Left side: IoT simulator, Vehicle Specs & Activity Log */}
                 <div className="flex flex-col gap-6 lg:col-span-1">
                   
+                  {/* Connected Vehicle IoT Simulator */}
+                  <div className="glass-card">
+                    <div 
+                      onClick={() => setIsSimulatorExpanded(!isSimulatorExpanded)}
+                      className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-darkBg-850 pb-3 cursor-pointer select-none"
+                    >
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block font-mono">
+                        CONNECTED VEHICLE IoT SIMULATOR
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                        {isSimulatorExpanded ? (
+                          <ChevronUp className="h-4 w-4 text-blue-500 dark:text-brand-400" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-blue-500 dark:text-brand-400" />
+                        )}
+                      </div>
+                    </div>
+
+                    {isSimulatorExpanded && (
+                      <form onSubmit={handleTransmitTelemetry} className="space-y-4 text-xs animate-slide-up">
+                      {/* Battery Health & Voltage */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center font-mono">
+                          <span className="font-semibold text-slate-700 dark:text-slate-350">Battery Health</span>
+                          <span className="font-bold text-slate-600 dark:text-slate-400">{simBatteryHealth}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={simBatteryHealth}
+                          onChange={(e) => setSimBatteryHealth(Number(e.target.value))}
+                          className="w-full accent-blue-600 dark:accent-brand-500 cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center font-mono">
+                          <span className="font-semibold text-slate-700 dark:text-slate-355">Battery Voltage</span>
+                          <span className="font-bold text-slate-600 dark:text-slate-400">{simBatteryVoltage} V</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="10.0"
+                          max="14.5"
+                          step="0.1"
+                          value={simBatteryVoltage}
+                          onChange={(e) => setSimBatteryVoltage(Number(e.target.value))}
+                          className="w-full accent-blue-600 dark:accent-brand-500 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Brake Pad Wear */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center font-mono">
+                          <span className="font-semibold text-slate-700 dark:text-slate-355">Brake Pad Wear</span>
+                          <span className="font-bold text-slate-600 dark:text-slate-400">{simBrakePadWear}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={simBrakePadWear}
+                          onChange={(e) => setSimBrakePadWear(Number(e.target.value))}
+                          className="w-full accent-blue-600 dark:accent-brand-500 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Coolant Temperature */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center font-mono">
+                          <span className="font-semibold text-slate-700 dark:text-slate-355">Coolant Temp</span>
+                          <span className="font-bold text-slate-600 dark:text-slate-400">{simCoolantTemp} °C</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="60"
+                          max="120"
+                          value={simCoolantTemp}
+                          onChange={(e) => setSimCoolantTemp(Number(e.target.value))}
+                          className="w-full accent-blue-600 dark:accent-brand-500 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Tire Pressures */}
+                      <div className="space-y-1">
+                        <span className="font-semibold text-slate-700 dark:text-slate-300 block font-mono">Tire Pressures (psi)</span>
+                        <div className="grid grid-cols-2 gap-2 font-mono">
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">Front Left</label>
+                            <input
+                              type="number"
+                              min="15"
+                              max="45"
+                              value={simTireFL}
+                              onChange={(e) => setSimTireFL(Number(e.target.value))}
+                              className="w-full px-2.5 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-705 focus:outline-none dark:bg-darkBg-950 dark:border-darkBg-800 dark:text-slate-200"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">Front Right</label>
+                            <input
+                              type="number"
+                              min="15"
+                              max="45"
+                              value={simTireFR}
+                              onChange={(e) => setSimTireFR(Number(e.target.value))}
+                              className="w-full px-2.5 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-705 focus:outline-none dark:bg-darkBg-950 dark:border-darkBg-800 dark:text-slate-200"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">Rear Left</label>
+                            <input
+                              type="number"
+                              min="15"
+                              max="45"
+                              value={simTireRL}
+                              onChange={(e) => setSimTireRL(Number(e.target.value))}
+                              className="w-full px-2.5 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-705 focus:outline-none dark:bg-darkBg-950 dark:border-darkBg-800 dark:text-slate-200"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">Rear Right</label>
+                            <input
+                              type="number"
+                              min="15"
+                              max="45"
+                              value={simTireRR}
+                              onChange={(e) => setSimTireRR(Number(e.target.value))}
+                              className="w-full px-2.5 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-705 focus:outline-none dark:bg-darkBg-950 dark:border-darkBg-800 dark:text-slate-200"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* OBD-II Fault Codes checkboxes */}
+                      <div className="space-y-1.5 pt-1">
+                        <span className="font-semibold text-slate-700 dark:text-slate-300 block font-mono">OBD-II Fault Codes</span>
+                        <div className="grid grid-cols-1 gap-1.5">
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={simObdCodes.includes('P0300')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSimObdCodes([...simObdCodes, 'P0300']);
+                                } else {
+                                  setSimObdCodes(simObdCodes.filter(c => c !== 'P0300'));
+                                }
+                              }}
+                              className="h-3.5 w-3.5 accent-blue-600 dark:accent-brand-500 rounded border-slate-300 dark:border-darkBg-800"
+                            />
+                            <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400">P0300 - Engine Misfire</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={simObdCodes.includes('P0115')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSimObdCodes([...simObdCodes, 'P0115']);
+                                } else {
+                                  setSimObdCodes(simObdCodes.filter(c => c !== 'P0115'));
+                                }
+                              }}
+                              className="h-3.5 w-3.5 accent-blue-600 dark:accent-brand-500 rounded border-slate-300 dark:border-darkBg-800"
+                            />
+                            <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400">P0115 - Coolant Temp Sensor Fault</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={simObdCodes.includes('P0420')}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSimObdCodes([...simObdCodes, 'P0420']);
+                                } else {
+                                  setSimObdCodes(simObdCodes.filter(c => c !== 'P0420'));
+                                }
+                              }}
+                              className="h-3.5 w-3.5 accent-blue-600 dark:accent-brand-500 rounded border-slate-300 dark:border-darkBg-800"
+                            />
+                            <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400">P0420 - Catalyst Efficiency</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={transmittingTelemetry}
+                        className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white font-mono text-xs font-bold rounded-xl transition-all cursor-pointer shadow-md disabled:opacity-50 mt-4 dark:bg-brand-600 dark:hover:bg-brand-500"
+                      >
+                        <RefreshCw className={`h-3.5 w-3.5 ${transmittingTelemetry ? 'animate-spin' : ''}`} />
+                        {transmittingTelemetry ? 'Transmitting...' : 'Transmit Telematics'}
+                      </button>
+                    </form>
+                  )}
+                </div>
+
                   {/* Stockomo Details Card */}
                   <div className="glass-card">
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-4">DETAILS</span>
@@ -314,19 +770,19 @@ const VehicleDetail = () => {
                       
                       <div className="grid grid-cols-3 gap-2">
                         <span className="text-slate-400 dark:text-slate-500 col-span-1">Category</span>
-                        <span className="text-slate-300 dark:text-slate-700 col-span-0.5 text-center">:</span>
-                        <span className="font-semibold text-slate-700 dark:text-slate-200 col-span-1.5">{vehicle.vehicleType}</span>
+                        <span className="text-slate-300 dark:text-slate-705 col-span-0.5 text-center">:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-205 col-span-1.5">{vehicle.vehicleType}</span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         <span className="text-slate-400 dark:text-slate-500 col-span-1">Priority</span>
-                        <span className="text-slate-300 dark:text-slate-700 col-span-0.5 text-center">:</span>
+                        <span className="text-slate-305 dark:text-slate-707 col-span-0.5 text-center">:</span>
                         <span className="col-span-1.5">
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
                             !prediction || prediction.healthScore >= 80
                               ? 'bg-emerald-50 border-emerald-200/50 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400'
                               : prediction.healthScore >= 50
                               ? 'bg-amber-50 border-amber-200/50 text-amber-600 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400'
-                              : 'bg-rose-50 border-rose-200/50 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-450'
+                              : 'bg-rose-50 border-rose-200/50 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-455'
                           }`}>
                             {!prediction || prediction.healthScore >= 80 ? 'Low' : prediction.healthScore >= 50 ? 'Medium' : 'High'}
                           </span>
@@ -334,31 +790,58 @@ const VehicleDetail = () => {
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         <span className="text-slate-400 dark:text-slate-500 col-span-1">Odometer</span>
-                        <span className="text-slate-300 dark:text-slate-700 col-span-0.5 text-center">:</span>
-                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-200 col-span-1.5">{formatOdometer(vehicle.currentOdometer)}</span>
+                        <span className="text-slate-300 dark:text-slate-705 col-span-0.5 text-center">:</span>
+                        <span className="font-mono font-semibold text-slate-705 dark:text-slate-200 col-span-1.5">{formatOdometer(vehicle.currentOdometer)}</span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         <span className="text-slate-400 dark:text-slate-500 col-span-1">Fuel Type</span>
-                        <span className="text-slate-300 dark:text-slate-700 col-span-0.5 text-center">:</span>
-                        <span className="font-semibold text-slate-700 dark:text-slate-200 col-span-1.5">{vehicle.fuelType}</span>
+                        <span className="text-slate-300 dark:text-slate-705 col-span-0.5 text-center">:</span>
+                        <span className="font-semibold text-slate-705 dark:text-slate-200 col-span-1.5">{vehicle.fuelType}</span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         <span className="text-slate-400 dark:text-slate-500 col-span-1">Year</span>
-                        <span className="text-slate-300 dark:text-slate-700 col-span-0.5 text-center">:</span>
-                        <span className="font-semibold text-slate-700 dark:text-slate-200 col-span-1.5">{vehicle.year}</span>
+                        <span className="text-slate-300 dark:text-slate-705 col-span-0.5 text-center">:</span>
+                        <span className="font-semibold text-slate-750 dark:text-slate-200 col-span-1.5">{vehicle.year}</span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         <span className="text-slate-400 dark:text-slate-500 col-span-1">Registered</span>
-                        <span className="text-slate-300 dark:text-slate-700 col-span-0.5 text-center">:</span>
-                        <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-200 col-span-1.5">{vehicle.registrationNumber}</span>
+                        <span className="text-slate-300 dark:text-slate-705 col-span-0.5 text-center">:</span>
+                        <span className="font-mono text-xs font-semibold text-slate-705 dark:text-slate-200 col-span-1.5">{vehicle.registrationNumber}</span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         <span className="text-slate-400 dark:text-slate-500 col-span-1">Purchased</span>
-                        <span className="text-slate-300 dark:text-slate-700 col-span-0.5 text-center">:</span>
-                        <span className="font-semibold text-slate-700 dark:text-slate-200 col-span-1.5">{formatDate(vehicle.purchaseDate)}</span>
+                        <span className="text-slate-300 dark:text-slate-705 col-span-0.5 text-center">:</span>
+                        <span className="font-semibold text-slate-705 dark:text-slate-200 col-span-1.5">{formatDate(vehicle.purchaseDate)}</span>
                       </div>
                     </div>
                   </div>
+
+                  {/* Maintenance Cost Forecast Card */}
+                  {prediction && (
+                    <div className="glass-card animate-slide-up">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 text-sm">
+                          <Coins className="h-5 w-5 text-amber-500 animate-pulse-slow" />
+                          Maintenance Cost Forecast
+                        </h3>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-darkBg-850">
+                          <span className="text-xs text-slate-400 dark:text-slate-500">Predicted Upcoming Spend</span>
+                          <span className="text-base font-extrabold text-slate-200">
+                            {formatCost(
+                              prediction.predictions
+                                ?.filter(p => p.status !== 'Healthy')
+                                ?.reduce((sum, p) => sum + p.estimatedCost, 0) || 0
+                            )}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed font-mono">
+                          This is the estimated cost of servicing components currently marked as 'Critical', 'Maintenance Due Soon', or 'Attention Required'.
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Stockomo Activity Log Card */}
                   <div className="glass-card">
@@ -400,7 +883,7 @@ const VehicleDetail = () => {
                         className={`pb-4 px-2 text-sm font-semibold border-b-2 transition-all ${
                           activeTab === 'diagnostics'
                             ? 'border-blue-600 text-blue-600 dark:border-brand-500 dark:text-brand-400'
-                            : 'border-transparent text-slate-400 hover:text-slate-650 dark:hover:text-slate-300'
+                            : 'border-transparent text-slate-400 hover:text-slate-655 dark:hover:text-slate-300'
                         }`}
                       >
                         Diagnostics
@@ -410,7 +893,7 @@ const VehicleDetail = () => {
                         className={`pb-4 px-2 ml-6 text-sm font-semibold border-b-2 transition-all ${
                           activeTab === 'logs'
                             ? 'border-blue-600 text-blue-600 dark:border-brand-500 dark:text-brand-400'
-                            : 'border-transparent text-slate-400 hover:text-slate-650 dark:hover:text-slate-300'
+                            : 'border-transparent text-slate-400 hover:text-slate-655 dark:hover:text-slate-300'
                         }`}
                       >
                         Service History
@@ -420,7 +903,7 @@ const VehicleDetail = () => {
                         className={`pb-4 px-2 ml-6 text-sm font-semibold border-b-2 transition-all ${
                           activeTab === 'appointments'
                             ? 'border-blue-600 text-blue-600 dark:border-brand-500 dark:text-brand-400'
-                            : 'border-transparent text-slate-400 hover:text-slate-650 dark:hover:text-slate-300'
+                            : 'border-transparent text-slate-400 hover:text-slate-655 dark:hover:text-slate-300'
                         }`}
                       >
                         Appointments
@@ -444,34 +927,93 @@ const VehicleDetail = () => {
                             {prediction?.predictions?.map((pred) => (
                               <div
                                 key={pred._id}
-                                className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group first:pt-0 last:pb-0"
+                                className="py-5 flex flex-col gap-3 group first:pt-0 last:pb-0 border-b border-slate-100 last:border-0 dark:border-darkBg-850"
                               >
-                                <div className="space-y-0.5">
-                                  <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{pred.category}</h4>
-                                  <p className="text-[11px] text-slate-450 dark:text-slate-400">
-                                    Remaining: <span className={pred.remainingDistance <= 0 ? 'text-rose-500 font-bold' : 'font-medium'}>{pred.remainingDistance <= 0 ? 'Overdue' : `${pred.remainingDistance.toLocaleString()} km`}</span>
-                                    {' • '}
-                                    <span className={pred.remainingDays <= 0 ? 'text-rose-500 font-bold' : 'font-medium'}>{pred.remainingDays <= 0 ? 'Time Exceeded' : `${pred.remainingDays} days`}</span>
-                                  </p>
+                                {/* First line: category, health %, status */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2.5">
+                                    <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">{pred.category}</h4>
+                                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border uppercase ${
+                                      pred.status === 'Critical'
+                                        ? 'bg-rose-50 border-rose-200/50 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-455'
+                                        : pred.status === 'Maintenance Due Soon'
+                                        ? 'bg-amber-50 border-amber-200/50 text-amber-600 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400'
+                                        : pred.status === 'Attention Required'
+                                        ? 'bg-yellow-50 border-yellow-200/50 text-yellow-600 dark:bg-yellow-500/10 dark:border-yellow-500/20 dark:text-yellow-400'
+                                        : 'bg-emerald-50 border-emerald-200/50 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400'
+                                    }`}>
+                                      {pred.status}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-slate-400 dark:text-slate-500 font-bold font-mono">
+                                      {pred.healthPercent}% Health
+                                    </span>
+                                  </div>
                                 </div>
 
-                                <div className="flex items-center gap-3">
-                                  <span className={`text-[9px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase ${
-                                    pred.status === 'Overdue'
-                                      ? 'bg-rose-50 border-rose-200/50 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400'
-                                      : pred.status === 'Due Soon'
-                                      ? 'bg-amber-50 border-amber-200/50 text-amber-600 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400'
-                                      : 'bg-emerald-50 border-emerald-200/50 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-450'
-                                  }`}>
-                                    {pred.status}
-                                  </span>
-                                  
-                                  <button
-                                    onClick={() => openLogServiceForCategory(pred.category)}
-                                    className="px-3 py-1 bg-white border border-slate-200 text-slate-600 text-[10px] font-bold rounded-lg hover:bg-blue-600 hover:text-white hover:border-transparent transition-all dark:bg-darkBg-850 dark:border-darkBg-800 dark:text-slate-400 dark:hover:bg-brand-500"
-                                  >
-                                    Log Service
-                                  </button>
+                                {/* Second line: Sleek remaining life progress bar */}
+                                <div className="w-full bg-slate-100 rounded-full h-1.5 dark:bg-darkBg-850 overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${
+                                      pred.healthPercent >= 75
+                                        ? 'bg-emerald-500'
+                                        : pred.healthPercent >= 50
+                                        ? 'bg-yellow-400'
+                                        : pred.healthPercent >= 25
+                                        ? 'bg-amber-500'
+                                        : 'bg-rose-500 animate-pulse'
+                                    }`}
+                                    style={{ width: `${pred.healthPercent}%` }}
+                                  />
+                                </div>
+
+                                {/* Third line: details and action controls */}
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
+                                  <div className="space-y-1 max-w-xl">
+                                    <div className="text-[11px] text-slate-455 dark:text-slate-400 leading-normal">
+                                      Remaining: <span className={pred.remainingDistance <= 0 && pred.remainingDays <= 0 ? 'text-rose-500 font-bold' : 'font-bold text-slate-650 dark:text-slate-300'}>
+                                        {pred.remainingDistance > 0 ? `${pred.remainingDistance.toLocaleString()} km` : '0 km'}
+                                        {' / '}
+                                        {pred.remainingDays > 0 ? `${pred.remainingDays} days` : '0 days'}
+                                      </span>
+                                      {pred.status !== 'Healthy' && (
+                                        <div className="mt-1 font-semibold text-slate-700 dark:text-slate-300">
+                                          💡 Recommendation: <span className="font-normal text-slate-500 dark:text-slate-400">{pred.recommendedAction}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                    {pred.status !== 'Healthy' && (
+                                      <div className="flex items-center gap-2.5 mr-2">
+                                        <div className="text-right">
+                                          <span className="text-[10px] text-slate-455 dark:text-slate-500 block uppercase font-mono leading-none">Est. Cost</span>
+                                          <span className="text-xs font-bold text-slate-700 dark:text-slate-202">
+                                            {formatCost(pred.estimatedCost)}
+                                          </span>
+                                        </div>
+                                        
+                                        <button
+                                          onClick={() => handleAutoBookDealer(pred.category, pred.estimatedCost)}
+                                          disabled={submitting}
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold rounded-xl transition-all shadow-sm dark:bg-brand-600 dark:hover:bg-brand-500 disabled:opacity-50 cursor-pointer"
+                                        >
+                                          <Calendar className="h-3.5 w-3.5" />
+                                          Auto-Book Service
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    <button
+                                      onClick={() => openLogServiceForCategory(pred.category)}
+                                      className="px-3 py-1.5 bg-white border border-slate-200 text-slate-650 text-[10px] font-bold rounded-xl hover:bg-slate-100 transition-all cursor-pointer dark:bg-darkBg-850 dark:border-darkBg-800 dark:text-slate-350 dark:hover:bg-darkBg-800"
+                                    >
+                                      Log Service
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             ))}
@@ -755,12 +1297,15 @@ const VehicleDetail = () => {
                 className="w-full px-3 py-2 bg-darkBg-950 border border-darkBg-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-brand-500"
               >
                 <option value="Engine Oil">Engine Oil</option>
-                <option value="Brake System">Brake System</option>
+                <option value="Brake Pads">Brake Pads</option>
+                <option value="Brake Fluid">Brake Fluid</option>
                 <option value="Battery">Battery</option>
                 <option value="Coolant">Coolant</option>
                 <option value="Air Filter">Air Filter</option>
                 <option value="Tires">Tires</option>
-                <option value="General Maintenance">General Maintenance</option>
+                <option value="Wiper Blades">Wiper Blades</option>
+                <option value="First Aid Kit Expiry">First Aid Kit Expiry</option>
+                <option value="General Vehicle Service">General Vehicle Service</option>
                 <option value="Other">Other</option>
               </select>
             </div>
@@ -812,7 +1357,7 @@ const VehicleDetail = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cost ($ USD) *</label>
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cost (₹ INR) *</label>
               <input
                 type="number"
                 required

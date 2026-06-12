@@ -3,14 +3,18 @@ const ServiceRecord = require('../models/ServiceRecord');
 const MaintenancePrediction = require('../models/MaintenancePrediction');
 const Notification = require('../models/Notification');
 
-// Define the rule-based thresholds for each category
+// Maintenance Rules & Calibration Data
 const MAINTENANCE_INTERVALS = {
-  'Engine Oil': { distance: 10000, days: 180 },       // 10,000 km or 6 months
-  'Brake System': { distance: 30000, days: 365 },     // 30,000 km or 1 year
-  'Battery': { distance: 50000, days: 730 },          // 50,000 km or 2 years
-  'Coolant': { distance: 40000, days: 730 },          // 40,000 km or 2 years
-  'Air Filter': { distance: 15000, days: 365 },       // 15,000 km or 1 year
-  'Tires': { distance: 60000, days: 1095 },           // 60,000 km or 3 years
+  'Engine Oil': { distance: 10000, type: 'distance', cost: 4500 },
+  'Brake Pads': { distance: 20000, type: 'distance', cost: 8500 },
+  'Brake Fluid': { days: 730, type: 'time', cost: 1800 }, // 2 years
+  'Tires': { distance: 15000, type: 'distance', cost: 24000 },
+  'Battery': { days: 1095, type: 'time', cost: 5500 }, // 3 years
+  'Coolant': { days: 730, type: 'time', cost: 2500 }, // 2 years
+  'Air Filter': { days: 365, type: 'time', cost: 1200 }, // 1 year
+  'Wiper Blades': { days: 180, type: 'time', cost: 800 }, // 6 months
+  'First Aid Kit Expiry': { days: 1825, type: 'time', cost: 500 }, // 5 years
+  'General Vehicle Service': { distance: 10000, days: 365, type: 'hybrid', cost: 6500 }, // 1 year or 10k km
 };
 
 /**
@@ -25,18 +29,13 @@ const calculatePrediction = async (vehicleId) => {
   }
 
   const serviceRecords = await ServiceRecord.find({ vehicle: vehicleId }).sort({ serviceDate: -1 });
-
-  const categories = Object.keys(MAINTENANCE_INTERVALS);
   const predictions = [];
   const currentDate = new Date();
 
-  let dueSoonCount = 0;
-  let overdueCount = 0;
+  const categories = Object.keys(MAINTENANCE_INTERVALS);
 
   for (const category of categories) {
     // Find the latest service record matching this category
-    // Note: serviceCategory matches the prediction category, except for generic ones like 'General Maintenance' or 'Other'
-    // which can also reset general items, but for now we look for exact matches or we can look for recent service of that specific type.
     const lastService = serviceRecords.find(r => r.serviceCategory === category);
 
     let lastServiceDate = vehicle.purchaseDate;
@@ -52,29 +51,173 @@ const calculatePrediction = async (vehicleId) => {
     const timeElapsedMs = currentDate - new Date(lastServiceDate);
     const daysElapsed = Math.floor(timeElapsedMs / (1000 * 60 * 60 * 24));
 
-    const remainingDistance = interval.distance - distanceTravelled;
-    const remainingDays = interval.days - daysElapsed;
+    let remainingDistance = 999999;
+    let remainingDays = 999999;
+    let healthPercent = 100;
 
-    // Determine Status
-    let status = 'Healthy';
-    if (remainingDistance <= 0 || remainingDays <= 0) {
-      status = 'Overdue';
-      overdueCount++;
-    } else if (remainingDistance <= 0.15 * interval.distance || remainingDays <= 30) {
-      status = 'Due Soon';
-      dueSoonCount++;
+    if (interval.type === 'distance' || interval.type === 'hybrid') {
+      remainingDistance = Math.max(0, interval.distance - distanceTravelled);
+    }
+    if (interval.type === 'time' || interval.type === 'hybrid') {
+      remainingDays = Math.max(0, interval.days - daysElapsed);
     }
 
-    // Determine Priority Score (0-100)
-    // 100 means critical (overdue). Otherwise, we scale based on how close it is to the limit.
+    // 1. Calculate remaining useful life percentage (RUL)
+    if (interval.type === 'distance') {
+      healthPercent = Math.round((remainingDistance / interval.distance) * 100);
+    } else if (interval.type === 'time') {
+      healthPercent = Math.round((remainingDays / interval.days) * 100);
+    } else if (interval.type === 'hybrid') {
+      const distPercent = (remainingDistance / interval.distance) * 100;
+      const timePercent = (remainingDays / interval.days) * 100;
+      healthPercent = Math.round(Math.min(distPercent, timePercent));
+    }
+    healthPercent = Math.max(0, Math.min(100, healthPercent));
+
+    // 2. Classify Health States
+    let status = 'Healthy';
+    if (healthPercent <= 10 || (interval.type === 'distance' && remainingDistance <= 0) || (interval.type === 'time' && remainingDays <= 0) || (interval.type === 'hybrid' && (remainingDistance <= 0 || remainingDays <= 0))) {
+      status = 'Critical';
+      healthPercent = 0; // force zero health if overdue/exceeded
+    } else if (healthPercent <= 25) {
+      status = 'Maintenance Due Soon';
+    } else if (healthPercent <= 50) {
+      status = 'Attention Required';
+    }
+
+    // 3. Telemetry and Connected Sensor Integrations (override status based on diagnostics)
+    if (vehicle.telemetry) {
+      const tel = vehicle.telemetry;
+      if (category === 'Battery') {
+        if (tel.batteryHealth < 50 || (tel.batteryVoltage !== undefined && tel.batteryVoltage < 11.5)) {
+          status = 'Critical';
+          healthPercent = Math.min(healthPercent, 5);
+        } else if (tel.batteryHealth < 70 || (tel.batteryVoltage !== undefined && tel.batteryVoltage < 12.0)) {
+          if (status === 'Healthy' || status === 'Attention Required') {
+            status = 'Maintenance Due Soon';
+            healthPercent = Math.min(healthPercent, 20);
+          }
+        }
+      }
+      if (category === 'Brake Pads') {
+        if (tel.brakePadWear > 90) {
+          status = 'Critical';
+          healthPercent = Math.min(healthPercent, 5);
+        } else if (tel.brakePadWear > 70) {
+          if (status === 'Healthy' || status === 'Attention Required') {
+            status = 'Maintenance Due Soon';
+            healthPercent = Math.min(healthPercent, 20);
+          }
+        }
+      }
+      if (category === 'Coolant') {
+        if (tel.coolantTemp > 105) {
+          status = 'Critical';
+          healthPercent = 0;
+        } else if (tel.coolantTemp > 98) {
+          if (status === 'Healthy') {
+            status = 'Attention Required';
+            healthPercent = Math.min(healthPercent, 45);
+          }
+        }
+      }
+      if (category === 'Tires') {
+        // If low pressure detected
+        const pressureIssue = tel.tirePressure && (
+          tel.tirePressure.fl < 26 || tel.tirePressure.fr < 26 ||
+          tel.tirePressure.rl < 26 || tel.tirePressure.rr < 26
+        );
+        if (pressureIssue) {
+          if (status === 'Healthy') {
+            status = 'Attention Required';
+            healthPercent = Math.min(healthPercent, 40);
+          }
+        }
+      }
+    }
+
+    // 4. Determine Priority Level
+    let priorityLevel = 'None';
     let priorityScore = 0;
-    if (status === 'Overdue') {
+
+    if (status === 'Critical') {
+      priorityLevel = 'Critical';
       priorityScore = 100;
+    } else if (status === 'Maintenance Due Soon') {
+      // Medium if distance is short or days are short
+      const isShortDistance = (interval.type === 'distance' || interval.type === 'hybrid') && remainingDistance <= 1000;
+      const isShortTime = (interval.type === 'time' || interval.type === 'hybrid') && remainingDays <= 30;
+
+      if (isShortDistance || isShortTime) {
+        priorityLevel = 'Medium';
+        priorityScore = 75;
+      } else {
+        priorityLevel = 'Low';
+        priorityScore = 50;
+      }
+    } else if (status === 'Attention Required') {
+      priorityLevel = 'Low';
+      priorityScore = 30;
+    }
+
+    // 5. Custom recommended action messages
+    let recommendedAction = 'No action required at this time.';
+    let message = `${category} is in normal operational status.`;
+    let serviceWindow = 'Within standard interval';
+
+    if (status === 'Critical') {
+      serviceWindow = 'Immediate action';
+      if (category === 'Engine Oil') {
+        message = 'Engine Oil change is critical!';
+        recommendedAction = 'Immediate workshop visit advised for oil change.';
+      } else if (category === 'Brake Pads') {
+        message = 'Brake pads worn out completely!';
+        recommendedAction = 'Replace brake pads immediately. Squeaking noise reported.';
+      } else if (category === 'Battery') {
+        message = 'Battery failure imminent!';
+        recommendedAction = 'Replace vehicle battery immediately to avoid ignition breakdown.';
+      } else if (category === 'Coolant') {
+        message = 'Engine coolant replacement overdue!';
+        recommendedAction = 'Flush cooling system and replace coolant immediately to prevent overheating.';
+      } else if (category === 'Tires') {
+        message = 'Tire replacement required!';
+        recommendedAction = 'Install new tires immediately. Tread wear exceeded safety limit.';
+      } else {
+        message = `${category} requires critical maintenance!`;
+        recommendedAction = `Immediate service for ${category.toLowerCase()} is required.`;
+      }
+    } else if (status === 'Maintenance Due Soon') {
+      serviceWindow = 'Within 2 weeks';
+      if (category === 'Engine Oil') {
+        message = 'Engine Oil Change Recommended';
+        recommendedAction = 'Schedule oil change service with authorized dealership.';
+      } else if (category === 'Brake Pads') {
+        message = 'Brake Inspection Due Soon';
+        recommendedAction = 'Schedule front brake inspection soon.';
+      } else if (category === 'Battery') {
+        message = 'Battery Health Degrading';
+        recommendedAction = 'Get battery test and inspection done.';
+      } else if (category === 'Tires') {
+        message = 'Tire Rotation Recommended';
+        recommendedAction = 'Rotate tires to ensure even wear patterns.';
+      } else {
+        message = `${category} service approaching threshold`;
+        recommendedAction = `Schedule ${category.toLowerCase()} maintenance.`;
+      }
+    } else if (status === 'Attention Required') {
+      serviceWindow = 'Within 1 month';
+      message = `${category} approaching standard limits`;
+      recommendedAction = `Inspect ${category.toLowerCase()} during your next vehicle checkup.`;
+    }
+
+    // Calculated predicted maintenance date
+    const predictedDate = new Date();
+    if (interval.type === 'distance' || interval.type === 'hybrid') {
+      // estimate remaining days based on average of 40 km per day if odometer usage is normal
+      const estDaysLeft = Math.round(remainingDistance / 40);
+      predictedDate.setDate(predictedDate.getDate() + Math.min(365, estDaysLeft));
     } else {
-      const distanceRatio = Math.max(0, distanceTravelled / interval.distance);
-      const daysRatio = Math.max(0, daysElapsed / interval.days);
-      const maxRatio = Math.max(distanceRatio, daysRatio);
-      priorityScore = Math.min(99, Math.round(maxRatio * 100));
+      predictedDate.setDate(predictedDate.getDate() + remainingDays);
     }
 
     predictions.push({
@@ -82,33 +225,37 @@ const calculatePrediction = async (vehicleId) => {
       status,
       lastServiceDate,
       lastServiceOdometer,
-      remainingDistance,
-      remainingDays,
+      remainingDistance: remainingDistance === 999999 ? 0 : remainingDistance,
+      remainingDays: remainingDays === 999999 ? 0 : remainingDays,
       priorityScore,
+      healthPercent,
+      predictedDate,
+      priorityLevel,
+      estimatedCost: interval.cost,
+      recommendedAction,
+      serviceWindow,
     });
   }
 
-  // Calculate Overall Health Score (0-100)
-  // Deduct for:
-  // - Age: 2 points per year (max 20 points)
-  // - Mileage: 1 point per 20,000 km (max 15 points)
-  // - Component health: 25 points per Overdue component, 10 points per Due Soon component
-  let healthScore = 100;
+  // 6. Overall Health Score (0-100)
+  let sumHealth = 0;
+  let criticalCount = 0;
+  let dueSoonCount = 0;
+  let attentionCount = 0;
 
-  const vehicleAgeYears = currentDate.getFullYear() - vehicle.year;
-  const ageDeduction = Math.min(20, Math.max(0, vehicleAgeYears * 2));
-  healthScore -= ageDeduction;
+  predictions.forEach(p => {
+    sumHealth += p.healthPercent;
+    if (p.status === 'Critical') criticalCount++;
+    if (p.status === 'Maintenance Due Soon') dueSoonCount++;
+    if (p.status === 'Attention Required') attentionCount++;
+  });
 
-  const mileageDeduction = Math.min(15, Math.floor(vehicle.currentOdometer / 20000));
-  healthScore -= mileageDeduction;
-
-  const componentDeduction = (overdueCount * 25) + (dueSoonCount * 10);
-  healthScore -= componentDeduction;
-
-  // Clamp health score between 0 and 100
+  let healthScore = Math.round(sumHealth / predictions.length);
+  // Apply penalties to force scores into accurate bins
+  healthScore -= (criticalCount * 20) + (dueSoonCount * 8) + (attentionCount * 3);
   healthScore = Math.max(0, Math.min(100, healthScore));
 
-  // Upsert prediction document in database
+  // Save predictions
   let predictionRecord = await MaintenancePrediction.findOne({ vehicle: vehicleId });
   if (predictionRecord) {
     predictionRecord.predictions = predictions;
@@ -122,31 +269,30 @@ const calculatePrediction = async (vehicleId) => {
     });
   }
 
-  // Trigger Notifications for due soon / overdue components
+  // Trigger Notifications
   await checkAndCreateNotifications(vehicle, predictions);
 
   return predictionRecord;
 };
 
 /**
- * Checks predictions and generates Notification alerts for due/overdue items.
- * Avoids creating duplicate notifications if they haven't been resolved yet.
+ * Checks predictions and generates Notification alerts.
  */
 const checkAndCreateNotifications = async (vehicle, predictions) => {
   for (const pred of predictions) {
-    if (pred.status === 'Healthy') continue;
+    if (pred.status === 'Healthy' || pred.status === 'Attention Required') continue;
 
-    const notifType = pred.status === 'Overdue' ? 'Maintenance Overdue' : 'Maintenance Due';
-    const notifTitle = `${pred.status === 'Overdue' ? 'CRITICAL' : 'Alert'}: ${pred.category} is ${pred.status.toLowerCase()}`;
+    const notifType = pred.status === 'Critical' ? 'Maintenance Overdue' : 'Maintenance Due';
+    const notifTitle = `${pred.status === 'Critical' ? 'CRITICAL' : 'Alert'}: ${pred.category} is ${pred.status.toLowerCase()}`;
     const notifMessage = `${vehicle.manufacturer} ${vehicle.model} (${vehicle.registrationNumber}) needs its ${pred.category} serviced. ` +
-      (pred.remainingDistance <= 0
-        ? `Odometer is over limit by ${Math.abs(pred.remainingDistance)} km.`
-        : `${pred.remainingDistance} km remaining. `) +
-      (pred.remainingDays <= 0
-        ? `Time has exceeded by ${Math.abs(pred.remainingDays)} days.`
-        : `${pred.remainingDays} days remaining.`);
+      (pred.remainingDistance > 0 && pred.remainingDistance < 999999
+        ? `${pred.remainingDistance} km remaining. `
+        : '') +
+      (pred.remainingDays > 0 && pred.remainingDays < 999999
+        ? `${pred.remainingDays} days remaining. `
+        : '') +
+      `Recommended action: ${pred.recommendedAction}`;
 
-    // Check if an unread notification of the same type and category already exists for this vehicle
     const existingNotif = await Notification.findOne({
       user: vehicle.owner,
       vehicle: vehicle._id,
@@ -162,6 +308,7 @@ const checkAndCreateNotifications = async (vehicle, predictions) => {
         type: notifType,
         title: notifTitle,
         message: notifMessage,
+        link: `/vehicles/${vehicle._id}`,
       });
     }
   }

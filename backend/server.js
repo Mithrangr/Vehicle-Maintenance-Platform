@@ -52,6 +52,14 @@ const startServer = async () => {
   // Connect to Database
   await connectDB();
 
+  // Initialize Scheduled Cron Jobs
+  try {
+    const { initScheduledJobs } = require('./jobs/scheduledPredictions');
+    initScheduledJobs();
+  } catch (err) {
+    console.error(`Failed to initialize scheduled jobs: ${err.message}`);
+  }
+
   // Auto-seed in development if database is empty
   if (process.env.NODE_ENV === 'development') {
     try {

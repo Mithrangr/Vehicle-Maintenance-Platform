@@ -120,7 +120,7 @@ const seedData = async (shouldExit = true) => {
     // Nexon: Brakes serviced 1 year ago (interval is 1 year -> Overdue)
     await ServiceRecord.create({
       vehicle: nexon._id,
-      serviceCategory: 'Brake System',
+      serviceCategory: 'Brake Pads',
       serviceDate: oneYearAgo,
       odometerReading: 94000,
       serviceDescription: 'Brake pad replacement and rotor resurfacing',
@@ -174,7 +174,7 @@ const seedData = async (shouldExit = true) => {
     // Swift: General Checkup 2 months ago (Healthy)
     await ServiceRecord.create({
       vehicle: swift._id,
-      serviceCategory: 'General Maintenance',
+      serviceCategory: 'General Vehicle Service',
       serviceDate: new Date(new Date().setMonth(new Date().getMonth() - 2)),
       odometerReading: 12000,
       serviceDescription: 'First scheduled Maruti Suzuki Care checkup',
@@ -212,7 +212,7 @@ const seedData = async (shouldExit = true) => {
     await Appointment.create({
       user: user._id,
       vehicle: nexonEv._id,
-      serviceCategory: 'General Maintenance',
+      serviceCategory: 'General Vehicle Service',
       appointmentDate: fifteenDaysInFuture,
       notes: 'Periodic service check and multi-point inspection.',
       status: 'Confirmed',
